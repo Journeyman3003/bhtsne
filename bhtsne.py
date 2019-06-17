@@ -196,28 +196,30 @@ def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=
     tmp_dir_path = mkdtemp()
 
     # Load data in forked process to free memory for actual bh_tsne calculation
-    child_pid = os.fork()
-    if child_pid == 0:
-        if _is_filelike_object(data):
-            data = load_data(data)
+    # child_pid = os.fork()
+    # if child_pid == 0:
+    #     if _is_filelike_object(data):
+    #         data = load_data(data)
+    #
+    #     init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,verbose=verbose, initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
+    init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,verbose=verbose, initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
 
-        init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,verbose=verbose, initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
-        sys.exit(0)
-    else:
-        try:
-            os.waitpid(child_pid, 0)
-        except KeyboardInterrupt:
-            print("Please run this program directly from python and not from ipython or jupyter.")
-            print("This is an issue due to asynchronous error handling.")
+    #     sys.exit(0)
+    # else:
+    #     try:
+    #         os.waitpid(child_pid, 0)
+    #     except KeyboardInterrupt:
+    #         print("Please run this program directly from python and not from ipython or jupyter.")
+    #         print("This is an issue due to asynchronous error handling.")
 
-        res = []
-        for result in bh_tsne(tmp_dir_path, verbose):
-            sample_res = []
-            for r in result:
-                sample_res.append(r)
-            res.append(sample_res)
-        rmtree(tmp_dir_path)
-        return np.asarray(res, dtype='float64')
+    res = []
+    for result in bh_tsne(tmp_dir_path, verbose):
+        sample_res = []
+        for r in result:
+            sample_res.append(r)
+        res.append(sample_res)
+    rmtree(tmp_dir_path)
+    return np.asarray(res, dtype='float64')
 
 
 def main(args):

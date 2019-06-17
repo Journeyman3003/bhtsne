@@ -1,10 +1,18 @@
 .idea
 *.ipynb
+.vs
+__pycache__
 *.py[oc]
 
 # ignore the C++ binary
 bh_tsne
+windows
+*.obj
 
 # ignore data files
 *.txt
 *.tsv
+MNIST
+
+# ignore plots
+plots
