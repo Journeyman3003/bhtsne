@@ -36,6 +36,7 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <string>
 #include "vptree.h"
 #include "sptree.h"
 #include "tsne.h"
@@ -713,5 +714,22 @@ void TSNE::save_data(double* data, int* landmarks, double* costs, int n, int d) 
 	fwrite(landmarks, sizeof(int), n, h);
     fwrite(costs, sizeof(double), n, h);
     fclose(h);
+	printf("Wrote the %i x %i data matrix successfully!\n", n, d);
+}
+
+void TSNE::save_intermediate_data(double * data, int * landmarks, double * costs, int n, int d, int iter) {
+	// Open file, write first 2 integers and then the data
+	FILE *h;
+	string filename = "result-" + to_string(iter) + ".dat";
+	if ((h = fopen(filename.c_str(), "w+b")) == NULL) {
+		printf("Error: could not open data file.\n");
+		return;
+	}
+	fwrite(&n, sizeof(int), 1, h);
+	fwrite(&d, sizeof(int), 1, h);
+	fwrite(data, sizeof(double), n * d, h);
+	fwrite(landmarks, sizeof(int), n, h);
+	fwrite(costs, sizeof(double), n, h);
+	fclose(h);
 	printf("Wrote the %i x %i data matrix successfully!\n", n, d);
 }

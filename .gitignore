@@ -12,7 +12,13 @@ windows
 # ignore data files
 *.txt
 *.tsv
+*.zip
+*.csv
 MNIST
 
 # ignore plots
 plots
+
+# ignore debugging files
+*.idb
+*.pdb

@@ -42,6 +42,7 @@ namespace TSNE {
              bool skip_random_init, int max_iter, int stop_lying_iter, int mom_switch_iter);
     bool load_data(double** data, int* n, int* d, int* no_dims, double* theta, double* perplexity, int* rand_seed, int* max_iter);
     void save_data(double* data, int* landmarks, double* costs, int n, int d);
+	void save_intermediate_data(double* data, int* landmarks, double* costs, int n, int d, int iter);
 #ifdef __cplusplus
 };
 }

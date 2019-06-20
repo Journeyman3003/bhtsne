@@ -174,7 +174,7 @@ def bh_tsne(workdir, verbose=False):
         #read_unpack('{}d'.format(sample_count), output_file)
 
 def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=False, initial_dims=50, use_pca=True, max_iter=1000):
-    '''
+    """
     Run TSNE based on the Barnes-HT algorithm
 
     Parameters:
@@ -189,28 +189,34 @@ def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=
     verbose: boolean
     use_pca: boolean
     max_iter: int
-    '''
+    """
 
     # bh_tsne works with fixed input and output paths, give it a temporary
     #   directory to work in so we don't clutter the filesystem
     tmp_dir_path = mkdtemp()
 
-    # Load data in forked process to free memory for actual bh_tsne calculation
-    # child_pid = os.fork()
-    # if child_pid == 0:
-    #     if _is_filelike_object(data):
-    #         data = load_data(data)
-    #
-    #     init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,verbose=verbose, initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
-    init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,verbose=verbose, initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
+    # distinguish between windows that does not support os.fork() and any other OS
+    if IS_WINDOWS:
 
-    #     sys.exit(0)
-    # else:
-    #     try:
-    #         os.waitpid(child_pid, 0)
-    #     except KeyboardInterrupt:
-    #         print("Please run this program directly from python and not from ipython or jupyter.")
-    #         print("This is an issue due to asynchronous error handling.")
+        # for windows: run initialization immediately and do not load data into forked process
+        init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,verbose=verbose, initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
+
+    else:
+        # for linux: do all the linux stuff in child process
+        # Load data in forked process to free memory for actual bh_tsne calculation
+        child_pid = os.fork()
+        if child_pid == 0:
+            if _is_filelike_object(data):
+                data = load_data(data)
+
+            init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,verbose=verbose, initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
+            os._exit(0)
+        else:
+            try:
+                os.waitpid(child_pid, 0)
+            except KeyboardInterrupt:
+                print("Please run this program directly from python and not from ipython or jupyter.")
+                print("This is an issue due to asynchronous error handling.")
 
     res = []
     for result in bh_tsne(tmp_dir_path, verbose):
@@ -219,6 +225,61 @@ def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=
             sample_res.append(r)
         res.append(sample_res)
     rmtree(tmp_dir_path)
+    return np.asarray(res, dtype='float64')
+
+
+def debug_bh_tsne_pre(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=False, initial_dims=50, use_pca=True, max_iter=1000):
+    """
+    debug TSNE pre: just write the data matrix into directory windows for windows execution
+    """
+
+    tmp_dir_path = os.path.abspath(path_join(os.path.dirname(__file__), "windows",))
+
+    init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,
+                 verbose=verbose, initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
+
+def debug_bh_tsne_result_generator(workdir, iteration=-1):
+    # Read and pass on the results
+
+    # if iteration is specified, read particular file,
+    if iteration >= 0:
+        result = 'result-' + str(iteration) + '.dat'
+    # else final file
+    else:
+        result = 'result.dat'
+
+    with open(path_join(workdir, result), 'rb') as output_file:
+        # The first two integers are just the number of samples and the
+        #   dimensionality
+        result_samples, result_dims = _read_unpack('ii', output_file)
+        # Collect the results, but they may be out of order
+        results = [_read_unpack('{}d'.format(result_dims), output_file)
+                   for _ in range(result_samples)]
+        # Now collect the landmark data so that we can return the data in
+        #   the order it arrived
+        results = [(_read_unpack('i', output_file), e) for e in results]
+        # Put the results in order and yield it
+        results.sort()
+        for _, result in results:
+            yield result
+        # The last piece of data is the cost for each sample, we ignore it
+        # read_unpack('{}d'.format(sample_count), output_file)
+
+
+def debug_bh_tsne_post(iteration=-1):
+    """
+    Do not execute bh_tsne, just read result.dat
+    :return:
+    """
+    tmp_dir_path = os.path.abspath(path_join(os.path.dirname(__file__), "windows", ))
+    res = []
+    for result in debug_bh_tsne_result_generator(tmp_dir_path, iteration):
+        sample_res = []
+        for r in result:
+            sample_res.append(r)
+        res.append(sample_res)
+    # better not remove the directory when debugging
+    # rmtree(tmp_dir_path)
     return np.asarray(res, dtype='float64')
 
 

@@ -1,5 +1,5 @@
 CXX = cl.exe
-CFLAGS = /nologo /O2 /EHsc /D "_CRT_SECURE_NO_DEPRECATE" /D "USEOMP" /openmp
+CFLAGS = /nologo /O2 /EHsc /DEBUG /ZI /D "_CRT_SECURE_NO_DEPRECATE" /D "USEOMP" /openmp
 
 TARGET = windows
 
