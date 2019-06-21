@@ -11,10 +11,25 @@ import seaborn as sns
 # data load/preprocessing
 # MNIST
 import mnist
-# import notification
+import notification
+import logging
+from streamlogger import StreamToLogger
+import sys
 
 PLOT_DIR = "plots"
 DATA_DIR = "results"
+
+
+def init_logger(logfile="bhtsne.log"):
+    # logging stuff
+
+    stdout_logger = logging.getLogger('STDOUT')
+    sl = StreamToLogger(stdout_logger, logging.INFO, logfile)
+    sys.stdout = sl
+
+    stderr_logger = logging.getLogger('STDERR')
+    sl = StreamToLogger(stderr_logger, logging.ERROR, logfile)
+    sys.stderr = sl
 
 
 def tsne_workflow(no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=False, initial_dims=50, use_pca=True, max_iter=1000):
@@ -22,15 +37,27 @@ def tsne_workflow(no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=Fals
 
 
 if __name__ == "__main__":
+
+    # initialize logging to file
+    init_logger()
+
     mnist_data, mnist_labels = mnist.load_mnist_data()
 
-    bhtsne.debug_bh_tsne_pre(mnist_data, initial_dims=mnist_data.shape[1], verbose=True)
-    embedding_array = bhtsne.debug_bh_tsne_post(iteration=1)
+    ###########################################################
+    #                           DEBUG                         #
+    ###########################################################
+
+    #bhtsne.debug_bh_tsne_pre(mnist_data, initial_dims=mnist_data.shape[1], verbose=True)
+    #embedding_array = bhtsne.debug_bh_tsne_post(iteration=1)
 
     # sanity check of error
-    np.sum(embedding_array[:, 2])
+    #np.sum(embedding_array[:, 2])
 
-    # embedding_array = bhtsne.run_bh_tsne(mnist_data, initial_dims=mnist_data.shape[1], verbose=True)
+    ###########################################################
+    #                           RUN                           #
+    ###########################################################
+
+    embedding_array = bhtsne.run_bh_tsne(mnist_data, initial_dims=mnist_data.shape[1], verbose=True)
     #
     mnist_latent = np.hstack((embedding_array[:, 0:2], np.reshape(mnist_labels, (mnist_labels.shape[0], 1))))
 

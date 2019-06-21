@@ -22,3 +22,6 @@ plots
 # ignore debugging files
 *.idb
 *.pdb
+
+# ignore logfiles
+*.log

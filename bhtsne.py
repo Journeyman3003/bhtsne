@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-'''
+"""
 A simple Python wrapper for the bh_tsne binary that makes it easier to use it
 for TSV files in a pipeline without any shell script trickery.
 
@@ -22,7 +22,7 @@ The output will not be normalised, maybe the below one-liner is of interest?:
 Authors:     Pontus Stenetorp    <pontus stenetorp se>
              Philippe Remy       <github: philipperemy>
 Version:    2016-03-08
-'''
+"""
 
 # Copyright (c) 2013, Pontus Stenetorp <pontus stenetorp se>
 #
