@@ -27,7 +27,7 @@ int main() {
 		double* Y = (double*) malloc(N * no_dims * sizeof(double));
 		double* costs = (double*) calloc(N, sizeof(double));
         if(Y == NULL || costs == NULL) { printf("Memory allocation failed!\n"); exit(1); }
-		TSNE::run(data, N, D, Y, no_dims, perplexity, theta, rand_seed, false, max_iter, 250, 250);
+		TSNE::run(data, N, D, Y, costs, landmarks, no_dims, perplexity, theta, rand_seed, false, max_iter, 250, 250);
 
 		// Save the results
 		TSNE::save_data(Y, landmarks, costs, N, no_dims);

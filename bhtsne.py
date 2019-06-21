@@ -157,15 +157,22 @@ def bh_tsne(workdir, verbose=False):
 
     # Read and pass on the results
     with open(path_join(workdir, 'result.dat'), 'rb') as output_file:
+
         # The first two integers are just the number of samples and the
         #   dimensionality
         result_samples, result_dims = _read_unpack('ii', output_file)
+
         # Collect the results, but they may be out of order
         results = [_read_unpack('{}d'.format(result_dims), output_file)
             for _ in range(result_samples)]
+
         # Now collect the landmark data so that we can return the data in
         #   the order it arrived
         results = [(_read_unpack('i', output_file), e) for e in results]
+
+        # Lastly, add the costs to each observation
+        results = [(l, (e + _read_unpack('d', output_file))) for l, e in results]
+
         # Put the results in order and yield it
         results.sort()
         for _, result in results:
@@ -249,17 +256,25 @@ def debug_bh_tsne_result_generator(workdir, iteration=-1):
         result = 'result.dat'
 
     with open(path_join(workdir, result), 'rb') as output_file:
+
         # The first two integers are just the number of samples and the
         #   dimensionality
         result_samples, result_dims = _read_unpack('ii', output_file)
+
         # Collect the results, but they may be out of order
         results = [_read_unpack('{}d'.format(result_dims), output_file)
                    for _ in range(result_samples)]
+
         # Now collect the landmark data so that we can return the data in
         #   the order it arrived
         results = [(_read_unpack('i', output_file), e) for e in results]
+
+        # Lastly, add the costs to each observation
+        results = [(l, (e + _read_unpack('d', output_file))) for l, e in results]
+
         # Put the results in order and yield it
         results.sort()
+
         for _, result in results:
             yield result
         # The last piece of data is the cost for each sample, we ignore it

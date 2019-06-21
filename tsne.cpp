@@ -58,7 +58,7 @@ static void computeSquaredEuclideanDistance(double* X, int N, int D, double* DD)
 static void symmetrizeMatrix(unsigned int** row_P, unsigned int** col_P, double** val_P, int N);
 
 // Perform t-SNE
-void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, int rand_seed,
+void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks, int no_dims, double perplexity, double theta, int rand_seed,
                bool skip_random_init, int max_iter, int stop_lying_iter, int mom_switch_iter) {
 
     // Set random seed
@@ -180,8 +180,9 @@ void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexit
         }
         if(iter == mom_switch_iter) momentum = final_momentum;
 
-        // Print out progress
-        if (iter > 0 && (iter % 50 == 0 || iter == max_iter - 1)) {
+        // Print out progress and save intermediate results
+        // if (iter > 0 && (iter % 50 == 0 || iter == max_iter - 1)) {
+		if ((iter == 0 || (iter + 1) % 50 == 0 || iter == max_iter - 1)) {
             end = clock();
             double C = .0;
             if(exact) C = evaluateError(P, Y, N, no_dims);
@@ -190,8 +191,11 @@ void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexit
                 printf("Iteration %d: error is %f\n", iter + 1, C);
             else {
                 total_time += (float) (end - start) / CLOCKS_PER_SEC;
-                printf("Iteration %d: error is %f (50 iterations in %4.2f seconds)\n", iter, C, (float) (end - start) / CLOCKS_PER_SEC);
+                printf("Iteration %d: error is %f (50 iterations in %4.2f seconds)\n", iter + 1, C, (float) (end - start) / CLOCKS_PER_SEC);
             }
+			//no matter whether iteration is 0 or % 50 == 0 or max_iter - 1, save the current results
+			save_intermediate_data(Y, landmarks, costs, N, no_dims, iter + 1);
+
 			start = clock();
         }
     }
