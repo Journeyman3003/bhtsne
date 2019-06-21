@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# import numpy as np
+import numpy as np
 import bhtsne
 # import matplotlib.pyplot as plt
-# import seaborn as sns
+import seaborn as sns
 # from datetime import datetime
 # import os
 # import pickle
@@ -22,14 +22,17 @@ def tsne_workflow(no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=Fals
 
 
 if __name__ == "__main__":
-    # mnist_data, mnist_labels = mnist.load_mnist_data()
+    mnist_data, mnist_labels = mnist.load_mnist_data()
 
-    # bhtsne.debug_bh_tsne_pre(mnist_data, initial_dims=mnist_data.shape[1], verbose=True)
-    embedding_array = bhtsne.debug_bh_tsne_post()
+    bhtsne.debug_bh_tsne_pre(mnist_data, initial_dims=mnist_data.shape[1], verbose=True)
+    embedding_array = bhtsne.debug_bh_tsne_post(iteration=1)
+
+    # sanity check of error
+    np.sum(embedding_array[:, 2])
 
     # embedding_array = bhtsne.run_bh_tsne(mnist_data, initial_dims=mnist_data.shape[1], verbose=True)
     #
-    # mnist_latent = np.hstack((embedding_array, np.reshape(mnist_labels, (mnist_labels.shape[0], 1))))
+    mnist_latent = np.hstack((embedding_array[:, 0:2], np.reshape(mnist_labels, (mnist_labels.shape[0], 1))))
 
     # # save embedding
     # embedding_name = "tSNE-MNIST-" + str(datetime.now()).replace(":", "_").replace(".", "_")
@@ -48,11 +51,11 @@ if __name__ == "__main__":
     # plt.show()
 
     # seaborn
-    # g = sns.scatterplot(x=mnist_latent[:, 0],
-    #                     y=mnist_latent[:, 1],
-    #                     hue=mnist_latent[:, 2],
-    #                     legend="full",
-    #                     palette=sns.color_palette("bright"))
+    g = sns.scatterplot(x=mnist_latent[:, 0],
+                        y=mnist_latent[:, 1],
+                        hue=mnist_latent[:, 2],
+                        legend="full",
+                        palette=sns.color_palette("bright"))
     #
     # fig = g.get_figure()
     # figure_name = "tSNE-MNIST-" + str(datetime.now()).replace(":", "_").replace(".", "_")

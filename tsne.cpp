@@ -52,8 +52,8 @@ static void computeGaussianPerplexity(double* X, int N, int D, unsigned int** _r
 static double randn();
 static void computeExactGradient(double* P, double* Y, int N, int D, double* dC);
 static void computeGradient(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
-static double evaluateError(double* P, double* Y, int N, int D);
-static double evaluateError(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta);
+static double evaluateError(double* P, double* Y, int N, int D, double* costs);
+static double evaluateError(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
 static void computeSquaredEuclideanDistance(double* X, int N, int D, double* DD);
 static void symmetrizeMatrix(unsigned int** row_P, unsigned int** col_P, double** val_P, int N);
 
@@ -185,8 +185,8 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 		if ((iter == 0 || (iter + 1) % 50 == 0 || iter == max_iter - 1)) {
             end = clock();
             double C = .0;
-            if(exact) C = evaluateError(P, Y, N, no_dims);
-            else      C = evaluateError(row_P, col_P, val_P, Y, N, no_dims, theta);  // doing approximate computation here!
+            if(exact) C = evaluateError(P, Y, N, no_dims, costs);
+            else      C = evaluateError(row_P, col_P, val_P, Y, N, no_dims, theta, costs);  // doing approximate computation here!
             if(iter == 0)
                 printf("Iteration %d: error is %f\n", iter + 1, C);
             else {
@@ -290,7 +290,7 @@ static void computeExactGradient(double* P, double* Y, int N, int D, double* dC)
 
 
 // Evaluate t-SNE cost function (exactly)
-static double evaluateError(double* P, double* Y, int N, int D) {
+static double evaluateError(double* P, double* Y, int N, int D, double* costs) {
 
     // Compute the squared Euclidean distance matrix
     double* DD = (double*) malloc(N * N * sizeof(double));
@@ -315,8 +315,17 @@ static double evaluateError(double* P, double* Y, int N, int D) {
 
     // Sum t-SNE error
     double C = .0;
-	for(int n = 0; n < N * N; n++) {
-        C += P[n] * log((P[n] + FLT_MIN) / (Q[n] + FLT_MIN));
+	// i = Data Point i
+	for(int i = 0; i < N; i++) {
+		// aggregated Cost of Point i
+		double Ci = .0;
+		// j = neighboring point index
+		for (int j = 0; j < N; j++) {
+			C += P[i * N + j] * log((P[i * N + j] + FLT_MIN) / (Q[i * N + j] + FLT_MIN));
+			Ci += P[i * N + j] * log((P[i * N + j] + FLT_MIN) / (Q[i * N + j] + FLT_MIN));
+		}
+		//write to costs
+		costs[i] = Ci;
 	}
 
     // Clean up memory
@@ -326,7 +335,7 @@ static double evaluateError(double* P, double* Y, int N, int D) {
 }
 
 // Evaluate t-SNE cost function (approximately)
-static double evaluateError(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta)
+static double evaluateError(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs)
 {
 
     // Get estimate of normalization term
@@ -340,6 +349,8 @@ static double evaluateError(unsigned int* row_P, unsigned int* col_P, double* va
     double C = .0, Q;
     for(int n = 0; n < N; n++) {
         ind1 = n * D;
+		// variable to store cost of point n
+		double Cn = .0;
         for(int i = row_P[n]; i < row_P[n + 1]; i++) {
             Q = .0;
             ind2 = col_P[i] * D;
@@ -348,7 +359,10 @@ static double evaluateError(unsigned int* row_P, unsigned int* col_P, double* va
             for(int d = 0; d < D; d++) Q += buff[d] * buff[d];
             Q = (1.0 / (1.0 + Q)) / sum_Q;
             C += val_P[i] * log((val_P[i] + FLT_MIN) / (Q + FLT_MIN));
+			Cn += val_P[i] * log((val_P[i] + FLT_MIN) / (Q + FLT_MIN));
+
         }
+		costs[n] = Cn;
     }
 
     // Clean up memory
