@@ -32,23 +32,19 @@ def init_logger(logfile="bhtsne.log"):
     sys.stderr = sl
 
 
-def tsne_workflow(no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=False, initial_dims=50, use_pca=True, max_iter=1000):
-    None
-
-
 if __name__ == "__main__":
 
     # initialize logging to file
-    init_logger()
+    # init_logger()
 
-    mnist_data, mnist_labels = mnist.load_mnist_data()
+    # mnist_data, mnist_labels = mnist.load_mnist_data()
 
     ###########################################################
     #                           DEBUG                         #
     ###########################################################
 
     #bhtsne.debug_bh_tsne_pre(mnist_data, initial_dims=mnist_data.shape[1], verbose=True)
-    #embedding_array = bhtsne.debug_bh_tsne_post(iteration=1)
+    embedding_dict = bhtsne.debug_bh_tsne_post()
 
     # sanity check of error
     #np.sum(embedding_array[:, 2])
@@ -57,9 +53,9 @@ if __name__ == "__main__":
     #                           RUN                           #
     ###########################################################
 
-    embedding_array = bhtsne.run_bh_tsne(mnist_data, initial_dims=mnist_data.shape[1], verbose=True)
+    # embedding_dict = bhtsne.run_bh_tsne(mnist_data, initial_dims=mnist_data.shape[1], verbose=True)
     #
-    mnist_latent = np.hstack((embedding_array[:, 0:2], np.reshape(mnist_labels, (mnist_labels.shape[0], 1))))
+    # mnist_latent = np.hstack((embedding_array[:, 0:2], np.reshape(mnist_labels, (mnist_labels.shape[0], 1))))
 
     # # save embedding
     # embedding_name = "tSNE-MNIST-" + str(datetime.now()).replace(":", "_").replace(".", "_")

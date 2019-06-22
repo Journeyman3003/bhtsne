@@ -48,8 +48,10 @@ from tempfile import mkdtemp
 from platform import system
 from os import devnull
 import numpy as np
-import os, sys
+import os
 import io
+import glob
+import pickle
 
 ### Constants
 IS_WINDOWS = True if system() == 'Windows' else False
@@ -103,7 +105,7 @@ def _is_filelike_object(f):
 
 
 def init_bh_tsne(samples, workdir, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL_DIMENSIONS, perplexity=DEFAULT_PERPLEXITY,
-            theta=DEFAULT_THETA, randseed=EMPTY_SEED, verbose=False, use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS):
+            theta=DEFAULT_THETA, randseed=EMPTY_SEED, use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS):
 
     if use_pca:
         samples = samples - np.mean(samples, axis=0)
@@ -137,9 +139,11 @@ def init_bh_tsne(samples, workdir, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL
         if randseed != EMPTY_SEED:
             data_file.write(pack('i', randseed))
 
+
 def load_data(input_file):
     # Read the data, using numpy's good judgement
     return np.loadtxt(input_file)
+
 
 def bh_tsne(workdir, verbose=False):
 
@@ -155,16 +159,21 @@ def bh_tsne(workdir, verbose=False):
                 ('enable verbose mode and ' if not verbose else '') +
                 'refer to the bh_tsne output for further details')
 
-    # Read and pass on the results
-    with open(path_join(workdir, 'result.dat'), 'rb') as output_file:
 
-        # The first two integers are just the number of samples and the
+def result_reader(result_file):
+
+    # Read and pass on the results
+    with open(result_file, 'rb') as output_file:
+
+        # First integer is the number of iterations
+        num_iteration = _read_unpack('i', output_file)
+
+        # Integers two and three are just the number of samples and the
         #   dimensionality
         result_samples, result_dims = _read_unpack('ii', output_file)
 
         # Collect the results, but they may be out of order
-        results = [_read_unpack('{}d'.format(result_dims), output_file)
-            for _ in range(result_samples)]
+        results = [_read_unpack('{}d'.format(result_dims), output_file) for _ in range(result_samples)]
 
         # Now collect the landmark data so that we can return the data in
         #   the order it arrived
@@ -173,14 +182,23 @@ def bh_tsne(workdir, verbose=False):
         # Lastly, add the costs to each observation
         results = [(l, (e + _read_unpack('d', output_file))) for l, e in results]
 
-        # Put the results in order and yield it
+        # Put the results in order
         results.sort()
-        for _, result in results:
-            yield result
-        # The last piece of data is the cost for each sample, we ignore it
-        #read_unpack('{}d'.format(sample_count), output_file)
 
-def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=False, initial_dims=50, use_pca=True, max_iter=1000):
+        res = []
+        for _, result in results:
+            sample_res = []
+            # needed to be flexible to number of dimensions
+            for r in result:
+                sample_res.append(r)
+            res.append(sample_res)
+
+        # returns a dict containing the number of the iteration and the actual data with the costs as last column
+        return {num_iteration: np.asarray(res, dtype='float64')}
+
+
+def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=False, initial_dims=50, use_pca=True,
+                max_iter=1000):
     """
     Run TSNE based on the Barnes-HT algorithm
 
@@ -206,7 +224,8 @@ def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=
     if IS_WINDOWS:
 
         # for windows: run initialization immediately and do not load data into forked process
-        init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,verbose=verbose, initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
+        init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,
+                     initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
 
     else:
         # for linux: do all the linux stuff in child process
@@ -216,7 +235,8 @@ def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=
             if _is_filelike_object(data):
                 data = load_data(data)
 
-            init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,verbose=verbose, initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
+            init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,
+                         initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
             os._exit(0)
         else:
             try:
@@ -225,17 +245,51 @@ def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=
                 print("Please run this program directly from python and not from ipython or jupyter.")
                 print("This is an issue due to asynchronous error handling.")
 
-    res = []
-    for result in bh_tsne(tmp_dir_path, verbose):
-        sample_res = []
-        for r in result:
-            sample_res.append(r)
-        res.append(sample_res)
+    # executes the actual bhtsne algorithm
+    bh_tsne(tmp_dir_path, verbose)
+
+    # load result files into single python dict object
+    files = [f for f in glob.glob(tmp_dir_path + "*.dat", recursive=False)]
+
+    # build final result dict:
+    #{ 1: nparray[...]
+    #  50: nparray[...]
+    # ...
+    #  1000: nparray[...]
+
+    bh_tsne_result = {}
+    for result_file in files:
+        bh_tsne_result.update(result_reader(result_file))
+
+    # cleanup temp directory
     rmtree(tmp_dir_path)
-    return np.asarray(res, dtype='float64')
+
+    # return final dict
+    return bh_tsne_result
 
 
-def debug_bh_tsne_pre(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=False, initial_dims=50, use_pca=True, max_iter=1000):
+def write_bh_tsne_result(bh_tsne_result_dict, dir, *filename_extensions, sep='-'):
+    # TODO check if filename was specified correctly
+
+    filename = "bh_tsne_result-" + sep.join(filename_extensions) + '.pickle'
+    # format to abspath
+    file_abspath = path_join(dir, filename)
+
+    with open(file_abspath, 'rb') as pickle_file:
+        return pickle.dump(bh_tsne_result_dict, pickle_file)
+
+
+def read_bh_tsne_result(file_abspath):
+    with open(file_abspath, 'rb') as pickle_file:
+        return pickle.load(pickle_file)
+
+
+#######################################################################################################################
+#                                               DEBUG CODE                                                            #
+#######################################################################################################################
+
+def debug_bh_tsne_pre(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=False, initial_dims=50,
+                      use_pca=True, max_iter=1000):
     """
     debug TSNE pre: just write the data matrix into directory windows for windows execution
     """
@@ -245,57 +299,29 @@ def debug_bh_tsne_pre(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, ve
     init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,
                  verbose=verbose, initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
 
-def debug_bh_tsne_result_generator(workdir, iteration=-1):
-    # Read and pass on the results
 
-    # if iteration is specified, read particular file,
-    if iteration >= 0:
-        result = 'result-' + str(iteration) + '.dat'
-    # else final file
-    else:
-        result = 'result.dat'
-
-    with open(path_join(workdir, result), 'rb') as output_file:
-
-        # The first two integers are just the number of samples and the
-        #   dimensionality
-        result_samples, result_dims = _read_unpack('ii', output_file)
-
-        # Collect the results, but they may be out of order
-        results = [_read_unpack('{}d'.format(result_dims), output_file)
-                   for _ in range(result_samples)]
-
-        # Now collect the landmark data so that we can return the data in
-        #   the order it arrived
-        results = [(_read_unpack('i', output_file), e) for e in results]
-
-        # Lastly, add the costs to each observation
-        results = [(l, (e + _read_unpack('d', output_file))) for l, e in results]
-
-        # Put the results in order and yield it
-        results.sort()
-
-        for _, result in results:
-            yield result
-        # The last piece of data is the cost for each sample, we ignore it
-        # read_unpack('{}d'.format(sample_count), output_file)
-
-
-def debug_bh_tsne_post(iteration=-1):
+def debug_bh_tsne_post():
     """
     Do not execute bh_tsne, just read result.dat
     :return:
     """
-    tmp_dir_path = os.path.abspath(path_join(os.path.dirname(__file__), "windows", ))
-    res = []
-    for result in debug_bh_tsne_result_generator(tmp_dir_path, iteration):
-        sample_res = []
-        for r in result:
-            sample_res.append(r)
-        res.append(sample_res)
-    # better not remove the directory when debugging
-    # rmtree(tmp_dir_path)
-    return np.asarray(res, dtype='float64')
+    debug_dir_path = os.path.abspath(path_join(os.path.dirname(__file__), "windows", ))
+
+    # load result files into single python dict object
+    files = [f for f in glob.glob(path_join(debug_dir_path, "result*"))]
+
+    # build final result dict:
+    # { 1: nparray[...]
+    #  50: nparray[...]
+    # ...
+    #  1000: nparray[...]
+
+    bh_tsne_result = {}
+    for result_file in files:
+        bh_tsne_result.update(result_reader(result_file))
+
+    # return final dict
+    return bh_tsne_result
 
 
 def main(args):
@@ -306,14 +332,16 @@ def main(args):
         return 
 
     argp = parser.parse_args(args[1:])
-    
-    for result in run_bh_tsne(argp.input, no_dims=argp.no_dims, perplexity=argp.perplexity, theta=argp.theta, randseed=argp.randseed,
-            verbose=argp.verbose, initial_dims=argp.initial_dims, use_pca=argp.use_pca, max_iter=argp.max_iter):
+
+    for result in run_bh_tsne(argp.input, no_dims=argp.no_dims, perplexity=argp.perplexity,
+                              theta=argp.theta, randseed=argp.randseed, verbose=argp.verbose,
+                              initial_dims=argp.initial_dims, use_pca=argp.use_pca, max_iter=argp.max_iter):
         fmt = ''
         for i in range(1, len(result)):
             fmt = fmt + '{}\t'
         fmt = fmt + '{}\n'
         argp.output.write(fmt.format(*result))
+
 
 if __name__ == '__main__':
     from sys import argv

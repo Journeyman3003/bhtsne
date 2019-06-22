@@ -743,6 +743,8 @@ void TSNE::save_intermediate_data(double * data, int * landmarks, double * costs
 		printf("Error: could not open data file.\n");
 		return;
 	}
+	//save number of iterations in addition
+	fwrite(&iter, sizeof(int), 1, h);
 	fwrite(&n, sizeof(int), 1, h);
 	fwrite(&d, sizeof(int), 1, h);
 	fwrite(data, sizeof(double), n * d, h);
