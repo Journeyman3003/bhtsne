@@ -1,12 +1,9 @@
 #!/usr/bin/env python
 
-import numpy as np
 import bhtsne
-# import matplotlib.pyplot as plt
 import seaborn as sns
-# from datetime import datetime
-# import os
-# import pickle
+from datetime import datetime
+import os
 
 # data load/preprocessing
 # MNIST
@@ -16,11 +13,54 @@ import logging
 from streamlogger import StreamToLogger
 import sys
 
-PLOT_DIR = "plots"
-DATA_DIR = "results"
+# directory structure
+CWD = os.path.dirname(os.path.realpath(__file__))
+PLOT_DIR = os.path.join(CWD, "plots")
+RESULT_DIR = os.path.join(CWD, "results")
+
+# Parameter tuning
+PARAMTUNING_DIR = os.path.join(RESULT_DIR, "parametertuning")
+
+# Building block experiments
+BUILDINGBLOCK_DIR = os.path.join(RESULT_DIR, "buildingblocks")
 
 
-def init_logger(logfile="bhtsne.log"):
+LOGGING_DIR = os.path.join(CWD, "logging")
+LOGGING_FILE = os.path.join(LOGGING_DIR, "bhtsne.log")
+
+# PARAMETER TESTING LIST
+PERPLEXITY = [2, 5, 10, 20, 30, 40, 50, 100]
+T_MAX = 1000
+
+
+def init_directories():
+    try:
+        os.makedirs(PLOT_DIR)
+    except FileExistsError:
+        # directory already exists
+        print(PLOT_DIR)
+        pass
+
+    try:
+        os.makedirs(PLOT_DIR)
+    except FileExistsError:
+        # directory already exists
+        pass
+
+    try:
+        os.makedirs(PLOT_DIR)
+    except FileExistsError:
+        # directory already exists
+        pass
+
+    try:
+        os.makedirs(PLOT_DIR)
+    except FileExistsError:
+        # directory already exists
+        pass
+
+
+def init_logger(logfile=LOGGING_FILE):
     # logging stuff
 
     stdout_logger = logging.getLogger('STDOUT')
@@ -34,8 +74,11 @@ def init_logger(logfile="bhtsne.log"):
 
 if __name__ == "__main__":
 
+    # initialize directories
+    init_directories()
+
     # initialize logging to file
-    # init_logger()
+    init_logger()
 
     # mnist_data, mnist_labels = mnist.load_mnist_data()
 
@@ -84,8 +127,9 @@ if __name__ == "__main__":
     # figure_name = "tSNE-MNIST-" + str(datetime.now()).replace(":", "_").replace(".", "_")
     # fig.savefig(os.path.join(PLOT_DIR, figure_name))
     #
-    # # send final notification
-    # notification.send_mail()
+
+    # send final notification
+    notification.send_mail()
 
 
 

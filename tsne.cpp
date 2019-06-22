@@ -59,7 +59,7 @@ static void symmetrizeMatrix(unsigned int** row_P, unsigned int** col_P, double*
 
 // Perform t-SNE
 void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks, int no_dims, double perplexity, double theta, int rand_seed,
-               bool skip_random_init, int max_iter, int stop_lying_iter, int mom_switch_iter) {
+               bool skip_random_init, int max_iter, int stop_lying_iter, int start_lying_iter, int mom_switch_iter) {
 
     // Set random seed
     if (skip_random_init != true) {
@@ -174,11 +174,17 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 		zeroMean(Y, N, no_dims);
 
         // Stop lying about the P-values after a while, and switch momentum
-        if(iter == stop_lying_iter) {
+        if(iter + 1 == stop_lying_iter) {
             if(exact) { for(int i = 0; i < N * N; i++)        P[i] /= 12.0; }
             else      { for(int i = 0; i < row_P[N]; i++) val_P[i] /= 12.0; }
         }
-        if(iter == mom_switch_iter) momentum = final_momentum;
+        if(iter + 1 == mom_switch_iter) momentum = final_momentum;
+
+		// Start lying againg about the P-values for the final iterations
+		if (iter + 1 == start_lying_iter) {
+			if (exact) { for (int i = 0; i < N * N; i++)        P[i] *= 12.0; }
+			else { for (int i = 0; i < row_P[N]; i++) val_P[i] *= 12.0; }
+		}
 
         // Print out progress and save intermediate results
         // if (iter > 0 && (iter % 50 == 0 || iter == max_iter - 1)) {
