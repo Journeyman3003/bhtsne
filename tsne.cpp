@@ -724,25 +724,8 @@ bool TSNE::load_data(double** data, int* n, int* d, int* no_dims, double* theta,
 }
 
 // Function that saves map to a t-SNE file
-void TSNE::save_data(double* data, int* landmarks, double* costs, int n, int d) {
-
-	// Open file, write first 2 integers and then the data
-	FILE *h;
-	if((h = fopen("result.dat", "w+b")) == NULL) {
-		printf("Error: could not open data file.\n");
-		return;
-	}
-	fwrite(&n, sizeof(int), 1, h);
-	fwrite(&d, sizeof(int), 1, h);
-    fwrite(data, sizeof(double), n * d, h);
-	fwrite(landmarks, sizeof(int), n, h);
-    fwrite(costs, sizeof(double), n, h);
-    fclose(h);
-	printf("Wrote the %i x %i data matrix successfully!\n", n, d);
-}
-
-void TSNE::save_intermediate_data(double * data, int * landmarks, double * costs, int n, int d, int iter) {
-	// Open file, write first 2 integers and then the data
+void TSNE::save_data(double * data, int * landmarks, double * costs, int n, int d, int iter) {
+	// Open file, write first 3 integers and then the data
 	FILE *h;
 	string filename = "result-" + to_string(iter) + ".dat";
 	if ((h = fopen(filename.c_str(), "w+b")) == NULL) {
@@ -751,10 +734,15 @@ void TSNE::save_intermediate_data(double * data, int * landmarks, double * costs
 	}
 	//save number of iterations in addition
 	fwrite(&iter, sizeof(int), 1, h);
+	//number of observations
 	fwrite(&n, sizeof(int), 1, h);
+	//number of target dimensions
 	fwrite(&d, sizeof(int), 1, h);
+	//actual data
 	fwrite(data, sizeof(double), n * d, h);
+	//landmarks to assure the order of points can be restored
 	fwrite(landmarks, sizeof(int), n, h);
+	//costs for each sample
 	fwrite(costs, sizeof(double), n, h);
 	fclose(h);
 	printf("Wrote the %i x %i data matrix successfully!\n", n, d);

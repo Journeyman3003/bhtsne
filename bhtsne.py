@@ -42,7 +42,7 @@ from argparse import ArgumentParser, FileType
 from os.path import abspath, dirname, isfile, join as path_join
 from shutil import rmtree
 from struct import calcsize, pack, unpack
-from subprocess import Popen
+from subprocess import Popen, PIPE
 from sys import stderr, stdin, stdout
 from tempfile import mkdtemp
 from platform import system
@@ -149,10 +149,13 @@ def bh_tsne(workdir, verbose=False):
 
     # Call bh_tsne and let it do its thing
     with open(devnull, 'w') as dev_null:
-        bh_tsne_p = Popen((abspath(BH_TSNE_BIN_PATH), ), cwd=workdir,
-                # bh_tsne is very noisy on stdout, tell it to use stderr
-                #   if it is to print any output
-                stdout=stderr if verbose else dev_null)
+        bh_tsne_p = Popen((abspath(BH_TSNE_BIN_PATH), ), cwd=workdir, universal_newlines=True,
+                          stdout=PIPE if verbose else dev_null)
+
+        # process stdout and print: redirect to print scan streamlogger
+        for line in iter(bh_tsne_p.stdout.readline, ""):
+            print(line)
+        bh_tsne_p.stdout.close()
         bh_tsne_p.wait()
         assert not bh_tsne_p.returncode, ('ERROR: Call to bh_tsne exited '
                 'with a non-zero return code exit status, please ' +
@@ -268,14 +271,14 @@ def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=
     return bh_tsne_result
 
 
-def write_bh_tsne_result(bh_tsne_result_dict, dir, *filename_extensions, sep='-'):
+def write_bh_tsne_result(bh_tsne_result_dict, directory, sep='-', *filename_extensions):
     # TODO check if filename was specified correctly
 
     filename = "bh_tsne_result-" + sep.join(filename_extensions) + '.pickle'
     # format to abspath
-    file_abspath = path_join(dir, filename)
+    file_abspath = path_join(directory, filename)
 
-    with open(file_abspath, 'rb') as pickle_file:
+    with open(file_abspath, 'wb') as pickle_file:
         return pickle.dump(bh_tsne_result_dict, pickle_file)
 
 

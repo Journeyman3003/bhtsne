@@ -32,7 +32,7 @@ int main() {
 
 		// Save the results
 		// skipped for now as it is done after each 50 iterations within TSNE::run
-		//TSNE::save_data(Y, landmarks, costs, N, no_dims);
+		//TSNE::save_data(Y, landmarks, costs, N, no_dims, max_iter);
 
         // Clean up the memory
 		free(data); data = NULL;

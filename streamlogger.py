@@ -15,12 +15,6 @@ class StreamToLogger(object):
         self.logger = logger
         self.log_level = log_level
         self.linebuf = ''
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format='%(asctime)s:%(levelname)s:%(name)s:%(message)s',
-            filename=filename,
-            filemode='a'
-        )
 
     def write(self, buf):
         for line in buf.rstrip().splitlines():
@@ -31,6 +25,12 @@ class StreamToLogger(object):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s:%(levelname)s:%(name)s:%(message)s',
+        filename="C:\\Users\\Tobi\\git\\bhtsne\\out.log",
+        filemode='a'
+    )
     stdout_logger = logging.getLogger('STDOUT')
     sl = StreamToLogger(stdout_logger, logging.INFO)
     sys.stdout = sl

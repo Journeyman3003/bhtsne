@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import bhtsne
-import seaborn as sns
+# import seaborn as sns
 from datetime import datetime
 import os
 
@@ -18,8 +18,14 @@ CWD = os.path.dirname(os.path.realpath(__file__))
 PLOT_DIR = os.path.join(CWD, "plots")
 RESULT_DIR = os.path.join(CWD, "results")
 
+# DATA SUBDIRECTORIES
+MNIST = "mnist"
+# ...
+
 # Parameter tuning
 PARAMTUNING_DIR = os.path.join(RESULT_DIR, "parametertuning")
+TMAX_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "iterations")
+PERPLEXITY_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "perplexity")
 
 # Building block experiments
 BUILDINGBLOCK_DIR = os.path.join(RESULT_DIR, "buildingblocks")
@@ -30,7 +36,7 @@ LOGGING_FILE = os.path.join(LOGGING_DIR, "bhtsne.log")
 
 # PARAMETER TESTING LIST
 PERPLEXITY = [2, 5, 10, 20, 30, 40, 50, 100]
-T_MAX = 1000
+T_MAX = [1000]
 
 
 def init_directories():
@@ -38,23 +44,28 @@ def init_directories():
         os.makedirs(PLOT_DIR)
     except FileExistsError:
         # directory already exists
-        print(PLOT_DIR)
         pass
 
     try:
-        os.makedirs(PLOT_DIR)
+        os.makedirs(PERPLEXITY_TUNING_DIR)
     except FileExistsError:
         # directory already exists
         pass
 
     try:
-        os.makedirs(PLOT_DIR)
+        os.makedirs(TMAX_TUNING_DIR)
     except FileExistsError:
         # directory already exists
         pass
 
     try:
-        os.makedirs(PLOT_DIR)
+        os.makedirs(BUILDINGBLOCK_DIR)
+    except FileExistsError:
+        # directory already exists
+        pass
+
+    try:
+        os.makedirs(LOGGING_DIR)
     except FileExistsError:
         # directory already exists
         pass
@@ -63,13 +74,22 @@ def init_directories():
 def init_logger(logfile=LOGGING_FILE):
     # logging stuff
 
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s:%(levelname)s:%(name)s:%(message)s',
+        filename=logfile,
+        filemode='a'
+    )
+
     stdout_logger = logging.getLogger('STDOUT')
-    sl = StreamToLogger(stdout_logger, logging.INFO, logfile)
-    sys.stdout = sl
+    out_l = StreamToLogger(stdout_logger, logging.INFO, logfile)
+    sys.stdout = out_l
 
     stderr_logger = logging.getLogger('STDERR')
-    sl = StreamToLogger(stderr_logger, logging.ERROR, logfile)
-    sys.stderr = sl
+    err_l = StreamToLogger(stderr_logger, logging.ERROR, logfile)
+    sys.stderr = err_l
+
+    return out_l, err_l
 
 
 if __name__ == "__main__":
@@ -77,17 +97,27 @@ if __name__ == "__main__":
     # initialize directories
     init_directories()
 
-    # initialize logging to file
-    init_logger()
+    # for very paranoid beings...
+    os.chdir(CWD)
 
-    # mnist_data, mnist_labels = mnist.load_mnist_data()
+    # initialize logging to file
+    out, err = init_logger()
+
+    ###########################################################
+    #                       LOAD DATA                         #
+    ###########################################################
+
+    # MNIST DATA SMALL
+    mnist_X, mnist_labels = mnist.load_mnist_data(all_data=False)
+    # MNIST DATA ALL
+    # mnist_X, mnist_labels = mnist.load_mnist_keras()
 
     ###########################################################
     #                           DEBUG                         #
     ###########################################################
 
-    #bhtsne.debug_bh_tsne_pre(mnist_data, initial_dims=mnist_data.shape[1], verbose=True)
-    embedding_dict = bhtsne.debug_bh_tsne_post()
+    # bhtsne.debug_bh_tsne_pre(mnist_data, initial_dims=mnist_data.shape[1], verbose=True)
+    # embedding_dict = bhtsne.debug_bh_tsne_post()
 
     # sanity check of error
     #np.sum(embedding_array[:, 2])
@@ -96,6 +126,39 @@ if __name__ == "__main__":
     #                           RUN                           #
     ###########################################################
 
+    # For each Data set and parameter, perform tsne 5 times to have some reliable data
+
+    ###########################################################
+    #               PARAMETER TUNING - ITERATIONS             #
+    ###########################################################
+
+    for max_iter in T_MAX:
+        print("Using T_MAX: " + str(max_iter))
+        # 5 times to validate
+        for i in range(5):
+            print("###", "### Round:" + str(i+1), "###")
+            # create directory if non-existent
+            try:
+                os.makedirs(os.path.join(TMAX_TUNING_DIR, str(max_iter), str(i+1)))
+            except FileExistsError:
+                # directory already exists
+                pass
+
+            # run t-SNE
+            bh_tsne_dict = bhtsne.run_bh_tsne(mnist_X, initial_dims=mnist_X.shape[1], max_iter=max_iter, verbose=True)
+
+            # save results
+            # timestamp
+            timestamp = str(datetime.now()).replace(":", "_").replace(".", "_")
+            bhtsne.write_bh_tsne_result(bh_tsne_dict, os.path.join(TMAX_TUNING_DIR, str(max_iter), str(i+1)),
+                                        "-", timestamp)
+
+
+
+
+    ###########################################################
+    #               PARAMETER TUNING - PERPLEXITY             #
+    ###########################################################
     # embedding_dict = bhtsne.run_bh_tsne(mnist_data, initial_dims=mnist_data.shape[1], verbose=True)
     #
     # mnist_latent = np.hstack((embedding_array[:, 0:2], np.reshape(mnist_labels, (mnist_labels.shape[0], 1))))
@@ -117,11 +180,11 @@ if __name__ == "__main__":
     # plt.show()
 
     # seaborn
-    g = sns.scatterplot(x=mnist_latent[:, 0],
-                        y=mnist_latent[:, 1],
-                        hue=mnist_latent[:, 2],
-                        legend="full",
-                        palette=sns.color_palette("bright"))
+    # g = sns.scatterplot(x=mnist_latent[:, 0],
+    #                    y=mnist_latent[:, 1],
+    #                    hue=mnist_latent[:, 2],
+    #                    legend="full",
+    #                    palette=sns.color_palette("bright"))
     #
     # fig = g.get_figure()
     # figure_name = "tSNE-MNIST-" + str(datetime.now()).replace(":", "_").replace(".", "_")

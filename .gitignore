@@ -25,3 +25,7 @@ plots
 
 # ignore logfiles
 *.log
+logging
+
+# ignore results (for now)
+results
