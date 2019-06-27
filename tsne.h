@@ -39,8 +39,8 @@ extern "C" {
 namespace TSNE {
 #endif
     void run(double* X, int N, int D, double* Y, double* costs, int* landmarks, int no_dims, double perplexity, double theta, int rand_seed,
-             bool skip_random_init, int max_iter, int stop_lying_iter, int start_lying_iter, int mom_switch_iter);
-    bool load_data(double** data, int* n, int* d, int* no_dims, double* theta, double* perplexity, int* rand_seed, int* max_iter);
+             bool skip_random_init, int max_iter, int lying_factor, int stop_lying_iter, int start_lying_iter, int mom_switch_iter);
+    bool load_data(double** data, int* n, int* d, int* no_dims, double* theta, double* perplexity, int* rand_seed, int* max_iter, double* lying_factor);
 	void save_data(double* data, int* landmarks, double* costs, int n, int d, int iter);
 #ifdef __cplusplus
 };

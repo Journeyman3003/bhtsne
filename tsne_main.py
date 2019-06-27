@@ -12,13 +12,16 @@ import notification
 import logging
 from streamlogger import StreamToLogger
 import sys
+import shutil
 
 # directory structure
 CWD = os.path.dirname(os.path.realpath(__file__))
 PLOT_DIR = os.path.join(CWD, "plots")
 RESULT_DIR = os.path.join(CWD, "results")
+RESULT_ZIP = os.path.join(CWD, "results.zip")
 
 # DATA SUBDIRECTORIES
+MNIST_TEST = "mnist2500"
 MNIST = "mnist"
 # ...
 
@@ -32,7 +35,9 @@ BUILDINGBLOCK_DIR = os.path.join(RESULT_DIR, "buildingblocks")
 
 
 LOGGING_DIR = os.path.join(CWD, "logging")
-LOGGING_FILE = os.path.join(LOGGING_DIR, "bhtsne.log")
+DAY = datetime.now().strftime("%d-%m-%Y")
+LOGGING_FILE_NAME = "bhtsne-" + DAY + ".log"
+LOGGING_FILE_ABSPATH = os.path.join(LOGGING_DIR, LOGGING_FILE_NAME)
 
 # PARAMETER TESTING LIST
 PERPLEXITY = [2, 5, 10, 20, 30, 40, 50, 100]
@@ -71,7 +76,7 @@ def init_directories():
         pass
 
 
-def init_logger(logfile=LOGGING_FILE):
+def init_logger(logfile=LOGGING_FILE_ABSPATH):
     # logging stuff
 
     logging.basicConfig(
@@ -132,6 +137,8 @@ if __name__ == "__main__":
     #               PARAMETER TUNING - ITERATIONS             #
     ###########################################################
 
+    # MNIST_TEST
+
     for max_iter in T_MAX:
         print("Using T_MAX: " + str(max_iter))
         # 5 times to validate
@@ -139,7 +146,7 @@ if __name__ == "__main__":
             print("###", "### Round:" + str(i+1), "###")
             # create directory if non-existent
             try:
-                os.makedirs(os.path.join(TMAX_TUNING_DIR, str(max_iter), str(i+1)))
+                os.makedirs(os.path.join(TMAX_TUNING_DIR, str(max_iter), MNIST_TEST, str(i+1)))
             except FileExistsError:
                 # directory already exists
                 pass
@@ -149,8 +156,9 @@ if __name__ == "__main__":
 
             # save results
             # timestamp
-            timestamp = str(datetime.now()).replace(":", "_").replace(".", "_")
-            bhtsne.write_bh_tsne_result(bh_tsne_dict, os.path.join(TMAX_TUNING_DIR, str(max_iter), str(i+1)),
+            timestamp = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+            bhtsne.write_bh_tsne_result(bh_tsne_dict,
+                                        os.path.join(TMAX_TUNING_DIR, str(max_iter), MNIST_TEST, str(i+1)),
                                         "-", timestamp)
 
 
@@ -191,8 +199,11 @@ if __name__ == "__main__":
     # fig.savefig(os.path.join(PLOT_DIR, figure_name))
     #
 
+    # create zip archive of results
+    shutil.make_archive(RESULT_DIR, 'zip', RESULT_DIR)
+
     # send final notification
-    notification.send_mail()
+    notification.send_mail(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH, "results.zip", RESULT_ZIP)
 
 
 

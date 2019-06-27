@@ -68,6 +68,7 @@ DEFAULT_THETA = 0.5
 EMPTY_SEED = -1
 DEFAULT_USE_PCA = True
 DEFAULT_MAX_ITERATIONS = 1000
+DEFAULT_EXAGGERATION_FACTOR = 12.0
 
 ###
 
@@ -104,8 +105,9 @@ def _is_filelike_object(f):
         return isinstance(f, io.IOBase)
 
 
-def init_bh_tsne(samples, workdir, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL_DIMENSIONS, perplexity=DEFAULT_PERPLEXITY,
-            theta=DEFAULT_THETA, randseed=EMPTY_SEED, use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS):
+def init_bh_tsne(samples, workdir, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL_DIMENSIONS,
+                 perplexity=DEFAULT_PERPLEXITY, theta=DEFAULT_THETA, randseed=EMPTY_SEED, use_pca=DEFAULT_USE_PCA,
+                 max_iter=DEFAULT_MAX_ITERATIONS, lying_factor=DEFAULT_EXAGGERATION_FACTOR):
 
     if use_pca:
         samples = samples - np.mean(samples, axis=0)
@@ -131,7 +133,7 @@ def init_bh_tsne(samples, workdir, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL
     #   vanilla tsne
     with open(path_join(workdir, 'data.dat'), 'wb') as data_file:
         # Write the bh_tsne header
-        data_file.write(pack('iiddii', sample_count, sample_dim, theta, perplexity, no_dims, max_iter))
+        data_file.write(pack('iiddiid', sample_count, sample_dim, theta, perplexity, no_dims, max_iter, lying_factor))
         # Then write the data
         for sample in samples:
             data_file.write(pack('{}d'.format(len(sample)), *sample))
@@ -149,7 +151,7 @@ def bh_tsne(workdir, verbose=False):
 
     # Call bh_tsne and let it do its thing
     with open(devnull, 'w') as dev_null:
-        bh_tsne_p = Popen((abspath(BH_TSNE_BIN_PATH), ), cwd=workdir, universal_newlines=True,
+        bh_tsne_p = Popen((abspath(BH_TSNE_BIN_PATH), ), cwd=workdir, universal_newlines=True, shell=False,
                           stdout=PIPE if verbose else dev_null)
 
         # process stdout and print: redirect to print scan streamlogger
@@ -158,9 +160,9 @@ def bh_tsne(workdir, verbose=False):
         bh_tsne_p.stdout.close()
         bh_tsne_p.wait()
         assert not bh_tsne_p.returncode, ('ERROR: Call to bh_tsne exited '
-                'with a non-zero return code exit status, please ' +
-                ('enable verbose mode and ' if not verbose else '') +
-                'refer to the bh_tsne output for further details')
+                                          'with a non-zero return code exit status, please ' +
+                                          ('enable verbose mode and ' if not verbose else '') +
+                                          'refer to the bh_tsne output for further details')
 
 
 def result_reader(result_file):
@@ -201,7 +203,7 @@ def result_reader(result_file):
 
 
 def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=False, initial_dims=50, use_pca=True,
-                max_iter=1000):
+                max_iter=1000, lying_factor=12.0):
     """
     Run TSNE based on the Barnes-HT algorithm
 
@@ -228,7 +230,7 @@ def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=
 
         # for windows: run initialization immediately and do not load data into forked process
         init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,
-                     initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
+                     initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter, lying_factor=lying_factor)
 
     else:
         # for linux: do all the linux stuff in child process
@@ -239,7 +241,7 @@ def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=
                 data = load_data(data)
 
             init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,
-                         initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
+                         initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter, lying_factor=lying_factor)
             os._exit(0)
         else:
             try:

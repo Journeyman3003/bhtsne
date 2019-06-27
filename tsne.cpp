@@ -59,7 +59,7 @@ static void symmetrizeMatrix(unsigned int** row_P, unsigned int** col_P, double*
 
 // Perform t-SNE
 void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks, int no_dims, double perplexity, double theta, int rand_seed,
-               bool skip_random_init, int max_iter, int stop_lying_iter, int start_lying_iter, int mom_switch_iter) {
+               bool skip_random_init, int max_iter, int lying_factor, int stop_lying_iter, int start_lying_iter, int mom_switch_iter) {
 
     // Set random seed
     if (skip_random_init != true) {
@@ -74,7 +74,7 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 
     // Determine whether we are using an exact algorithm
     if(N - 1 < 3 * perplexity) { printf("Perplexity too large for the number of data points!\n"); exit(1); }
-    printf("Using no_dims = %d, perplexity = %f, and theta = %f\n", no_dims, perplexity, theta);
+    printf("Using no_dims = %d, perplexity = %f, exaggeration factor = %d, and theta = %f\n", no_dims, perplexity, lying_factor, theta);
     bool exact = (theta == .0) ? true : false;
 
     // Set learning parameters
@@ -143,8 +143,8 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
     end = clock();
 
     // Lie about the P-values
-    if(exact) { for(int i = 0; i < N * N; i++)        P[i] *= 12.0; }
-    else {      for(int i = 0; i < row_P[N]; i++) val_P[i] *= 12.0; }
+    if(exact) { for(int i = 0; i < N * N; i++)        P[i] *= lying_factor; } //default was 12.0
+    else {      for(int i = 0; i < row_P[N]; i++) val_P[i] *= lying_factor; } //default was 12.0
 
 	// Initialize solution (randomly)
   if (skip_random_init != true) {
@@ -175,15 +175,15 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 
         // Stop lying about the P-values after a while, and switch momentum
         if(iter + 1 == stop_lying_iter) {
-            if(exact) { for(int i = 0; i < N * N; i++)        P[i] /= 12.0; }
-            else      { for(int i = 0; i < row_P[N]; i++) val_P[i] /= 12.0; }
+            if(exact) { for(int i = 0; i < N * N; i++)        P[i] /= lying_factor; } //default was 12.0
+            else      { for(int i = 0; i < row_P[N]; i++) val_P[i] /= lying_factor; } //default was 12.0
         }
         if(iter + 1 == mom_switch_iter) momentum = final_momentum;
 
 		// Start lying againg about the P-values for the final iterations
 		if (iter + 1 == start_lying_iter) {
-			if (exact) { for (int i = 0; i < N * N; i++)        P[i] *= 12.0; }
-			else { for (int i = 0; i < row_P[N]; i++) val_P[i] *= 12.0; }
+			if (exact) { for (int i = 0; i < N * N; i++)        P[i] *= lying_factor; } //default was 12.0
+			else { for (int i = 0; i < row_P[N]; i++) val_P[i] *= lying_factor; } //default was 12.0
 		}
 
         // Print out progress and save intermediate results
@@ -200,7 +200,7 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
                 printf("Iteration %d: error is %f (50 iterations in %4.2f seconds)\n", iter + 1, C, (float) (end - start) / CLOCKS_PER_SEC);
             }
 			//no matter whether iteration is 0 or % 50 == 0 or max_iter - 1, save the current results
-			save_intermediate_data(Y, landmarks, costs, N, no_dims, iter + 1);
+			save_data(Y, landmarks, costs, N, no_dims, iter + 1);
 
 			start = clock();
         }
@@ -700,7 +700,7 @@ static double randn() {
 
 // Function that loads data from a t-SNE file
 // Note: this function does a malloc that should be freed elsewhere
-bool TSNE::load_data(double** data, int* n, int* d, int* no_dims, double* theta, double* perplexity, int* rand_seed, int* max_iter) {
+bool TSNE::load_data(double** data, int* n, int* d, int* no_dims, double* theta, double* perplexity, int* rand_seed, int* max_iter, double* lying_factor) {
 
 	// Open file, read first 2 integers, allocate memory, and read the data
     FILE *h;
@@ -714,6 +714,7 @@ bool TSNE::load_data(double** data, int* n, int* d, int* no_dims, double* theta,
 	fread(perplexity, sizeof(double), 1, h);								// perplexity
 	fread(no_dims, sizeof(int), 1, h);                                      // output dimensionality
     fread(max_iter, sizeof(int),1,h);                                       // maximum number of iterations
+	fread(lying_factor, sizeof(double), 1, h);								// lying/exaggeration factor
 	*data = (double*) malloc(*d * *n * sizeof(double));
     if(*data == NULL) { printf("Memory allocation failed!\n"); exit(1); }
     fread(*data, sizeof(double), *n * *d, h);                               // the data
