@@ -22,5 +22,5 @@ $(TARGET):
 	-mkdir $(TARGET)
 
 clean:
-	-erase /Q *.obj *.exe $(TARGET)\. 
+	-erase /Q *.obj *.exe *.idb *.pdb $(TARGET)\. 
 	-rd $(TARGET)

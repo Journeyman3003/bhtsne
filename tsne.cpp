@@ -58,8 +58,9 @@ static void computeSquaredEuclideanDistance(double* X, int N, int D, double* DD)
 static void symmetrizeMatrix(unsigned int** row_P, unsigned int** col_P, double** val_P, int N);
 
 // Perform t-SNE
-void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks, int no_dims, double perplexity, double theta, int rand_seed,
-               bool skip_random_init, int max_iter, int lying_factor, int stop_lying_iter, int start_lying_iter, int mom_switch_iter) {
+void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks, int no_dims, double perplexity, double eta,
+			   double momentum, double final_momentum, double theta, int rand_seed, bool skip_random_init, int max_iter, 
+			   int lying_factor, int stop_lying_iter, int start_lying_iter, int mom_switch_iter) {
 
     // Set random seed
     if (skip_random_init != true) {
@@ -74,14 +75,14 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 
     // Determine whether we are using an exact algorithm
     if(N - 1 < 3 * perplexity) { printf("Perplexity too large for the number of data points!\n"); exit(1); }
-    printf("Using no_dims = %d, perplexity = %f, exaggeration factor = %d, and theta = %f\n", no_dims, perplexity, lying_factor, theta);
+    //printf("Using no_dims = %d, perplexity = %f, exaggeration factor = %d, theta = %f\nlearning rate = %f, momentum = %f, final momentum = %f, momentum switch iter = %d\nstop lying iter = %d, restart lying iter = %d\n", no_dims, perplexity, lying_factor, theta, eta, momentum, final_momentum, mom_switch_iter, stop_lying_iter, start_lying_iter);
     bool exact = (theta == .0) ? true : false;
 
     // Set learning parameters
     float total_time = .0;
     clock_t start, end;
-	double momentum = .5, final_momentum = .8;
-	double eta = 200.0;
+	// double momentum = .5, final_momentum = .8;
+	// double eta = 200.0;
 
     // Allocate some memory
     double* dY    = (double*) malloc(N * no_dims * sizeof(double));
@@ -700,7 +701,8 @@ static double randn() {
 
 // Function that loads data from a t-SNE file
 // Note: this function does a malloc that should be freed elsewhere
-bool TSNE::load_data(double** data, int* n, int* d, int* no_dims, double* theta, double* perplexity, int* rand_seed, int* max_iter, double* lying_factor) {
+bool TSNE::load_data(double** data, int* n, int* d, int* no_dims, double* theta, double* perplexity, double* eta, double* momentum, double* final_momentum,
+	int* rand_seed, int* max_iter, int* stop_lying_iter, int* restart_lying_iter, int* momentum_switch_iter, int* lying_factor) {
 
 	// Open file, read first 2 integers, allocate memory, and read the data
     FILE *h;
@@ -709,12 +711,31 @@ bool TSNE::load_data(double** data, int* n, int* d, int* no_dims, double* theta,
 		return false;
 	}
 	fread(n, sizeof(int), 1, h);											// number of datapoints
+	printf("number of data points = %d\n", *n);
 	fread(d, sizeof(int), 1, h);											// original dimensionality
+	printf("original dimensionality = %d \n", *d);
     fread(theta, sizeof(double), 1, h);										// gradient accuracy
+	printf("gradient accuracy = %f\n", *theta);
 	fread(perplexity, sizeof(double), 1, h);								// perplexity
+	printf("perplexity = %f\n", *perplexity);
+	fread(eta, sizeof(double), 1, h);										// learning rate eta
+	printf("eta = %f\n", *eta);
+	fread(momentum, sizeof(double), 1, h);									// momentum
+	printf("momentum = %f\n", *momentum);
+	fread(final_momentum, sizeof(double), 1, h);							// final momentum
+	printf("final momentum = %f\n", *final_momentum);
 	fread(no_dims, sizeof(int), 1, h);                                      // output dimensionality
+	printf("output dimensionality = %d\n", *no_dims);
     fread(max_iter, sizeof(int),1,h);                                       // maximum number of iterations
-	fread(lying_factor, sizeof(double), 1, h);								// lying/exaggeration factor
+	printf("max iterations = %d\n", *max_iter);
+	fread(stop_lying_iter, sizeof(int), 1, h);                              // iteration when to stop lying about P values
+	printf("iteration when to stop lying about P values = %d\n", *stop_lying_iter);
+	fread(restart_lying_iter, sizeof(int), 1, h);                           // iteration when to restart lying about P values
+	printf("iteration when to restart lying about P values = %d\n", *restart_lying_iter);
+	fread(momentum_switch_iter, sizeof(int), 1, h);                         // iteration when to switch momentum to final momentum
+	printf("iteration when to switch momentum to final momentum = %d\n", *momentum_switch_iter);
+	fread(lying_factor, sizeof(int), 1, h);									// lying/exaggeration factor
+	printf("lying factor = %d\n", *lying_factor);
 	*data = (double*) malloc(*d * *n * sizeof(double));
     if(*data == NULL) { printf("Memory allocation failed!\n"); exit(1); }
     fread(*data, sizeof(double), *n * *d, h);                               // the data
@@ -746,5 +767,5 @@ void TSNE::save_data(double * data, int * landmarks, double * costs, int n, int 
 	//costs for each sample
 	fwrite(costs, sizeof(double), n, h);
 	fclose(h);
-	printf("Wrote the %i x %i data matrix successfully!\n", n, d);
+	//printf("Wrote the %i x %i data matrix successfully!\n", n, d);
 }

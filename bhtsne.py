@@ -55,22 +55,28 @@ import pickle
 
 ### Constants
 IS_WINDOWS = True if system() == 'Windows' else False
-BH_TSNE_BIN_PATH = path_join(dirname(__file__), 'windows', 'bh_tsne.exe') if IS_WINDOWS else path_join(dirname(__file__), 'bh_tsne')
+BH_TSNE_BIN_PATH = path_join(dirname(__file__), 'windows', 'bh_tsne.exe') if IS_WINDOWS \
+                                                                          else path_join(dirname(__file__), 'bh_tsne')
 assert isfile(BH_TSNE_BIN_PATH), ('Unable to find the bh_tsne binary in the '
-    'same directory as this script, have you forgotten to compile it?: {}'
-    ).format(BH_TSNE_BIN_PATH)
+                                  'same directory as this script, have you forgotten to compile it?: {}'
+                                  ).format(BH_TSNE_BIN_PATH)
 # Default hyper-parameter values from van der Maaten (2014)
 # https://lvdmaaten.github.io/publications/papers/JMLR_2014.pdf (Experimental Setup, page 13)
 DEFAULT_NO_DIMS = 2
 INITIAL_DIMENSIONS = 50
 DEFAULT_PERPLEXITY = 50
 DEFAULT_THETA = 0.5
+DEFAULT_LEARNING_RATE = 200.0
+DEFAULT_MOMENTUM = 0.5
+DEFAULT_FINAL_MOMENTUM = 0.8
 EMPTY_SEED = -1
 DEFAULT_USE_PCA = True
 DEFAULT_MAX_ITERATIONS = 1000
-DEFAULT_EXAGGERATION_FACTOR = 12.0
+DEFAULT_STOP_LYING_ITERATION = 250
+DEFAULT_RESTART_LYING_ITERATION = 1001
+DEFAULT_MOMENTUM_SWITCH_ITERATION = 250
+DEFAULT_EXAGGERATION_FACTOR = 12
 
-###
 
 def _argparse():
     argparse = ArgumentParser('bh_tsne Python wrapper')
@@ -106,8 +112,11 @@ def _is_filelike_object(f):
 
 
 def init_bh_tsne(samples, workdir, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL_DIMENSIONS,
-                 perplexity=DEFAULT_PERPLEXITY, theta=DEFAULT_THETA, randseed=EMPTY_SEED, use_pca=DEFAULT_USE_PCA,
-                 max_iter=DEFAULT_MAX_ITERATIONS, lying_factor=DEFAULT_EXAGGERATION_FACTOR):
+                 perplexity=DEFAULT_PERPLEXITY, learning_rate=DEFAULT_LEARNING_RATE, momentum=DEFAULT_MOMENTUM,
+                 final_momentum=DEFAULT_FINAL_MOMENTUM, theta=DEFAULT_THETA, randseed=EMPTY_SEED,
+                 use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS, stop_lying_iter=DEFAULT_STOP_LYING_ITERATION,
+                 restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
+                 momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=DEFAULT_EXAGGERATION_FACTOR):
 
     if use_pca:
         samples = samples - np.mean(samples, axis=0)
@@ -133,7 +142,14 @@ def init_bh_tsne(samples, workdir, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL
     #   vanilla tsne
     with open(path_join(workdir, 'data.dat'), 'wb') as data_file:
         # Write the bh_tsne header
-        data_file.write(pack('iiddiid', sample_count, sample_dim, theta, perplexity, no_dims, max_iter, lying_factor))
+        data_file.write(pack('iidddddiiiiii',
+                             # 2 ints
+                             sample_count, sample_dim,
+                             # 5 double
+                             theta, perplexity, learning_rate, momentum, final_momentum,
+                             # 6 ints
+                             no_dims, max_iter, stop_lying_iter, restart_lying_iter, momentum_switch_iter,
+                             lying_factor))
         # Then write the data
         for sample in samples:
             data_file.write(pack('{}d'.format(len(sample)), *sample))
@@ -202,8 +218,12 @@ def result_reader(result_file):
         return {num_iteration: np.asarray(res, dtype='float64')}
 
 
-def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=False, initial_dims=50, use_pca=True,
-                max_iter=1000, lying_factor=12.0):
+def run_bh_tsne(data, no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, theta=DEFAULT_THETA,
+                learning_rate=DEFAULT_LEARNING_RATE, momentum=DEFAULT_MOMENTUM, final_momentum=DEFAULT_FINAL_MOMENTUM,
+                initial_dims=INITIAL_DIMENSIONS, use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS,
+                stop_lying_iter=DEFAULT_STOP_LYING_ITERATION, restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
+                momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=DEFAULT_EXAGGERATION_FACTOR,
+                randseed=-1, verbose=False):
     """
     Run TSNE based on the Barnes-HT algorithm
 
@@ -229,8 +249,11 @@ def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=
     if IS_WINDOWS:
 
         # for windows: run initialization immediately and do not load data into forked process
-        init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,
-                     initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter, lying_factor=lying_factor)
+        init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, initial_dims=initial_dims, perplexity=perplexity,
+                     learning_rate=learning_rate, momentum=momentum, final_momentum=final_momentum, theta=theta,
+                     use_pca=use_pca, max_iter=max_iter, stop_lying_iter=stop_lying_iter,
+                     restart_lying_iter=restart_lying_iter, momentum_switch_iter=momentum_switch_iter,
+                     lying_factor=lying_factor, randseed=randseed)
 
     else:
         # for linux: do all the linux stuff in child process
@@ -240,8 +263,11 @@ def run_bh_tsne(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=
             if _is_filelike_object(data):
                 data = load_data(data)
 
-            init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,
-                         initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter, lying_factor=lying_factor)
+            init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, initial_dims=initial_dims, perplexity=perplexity,
+                         learning_rate=learning_rate, momentum=momentum, final_momentum=final_momentum, theta=theta,
+                         use_pca=use_pca, max_iter=max_iter, stop_lying_iter=stop_lying_iter,
+                         restart_lying_iter=restart_lying_iter, momentum_switch_iter=momentum_switch_iter,
+                         lying_factor=lying_factor, randseed=randseed)
             os._exit(0)
         else:
             try:
@@ -302,7 +328,7 @@ def debug_bh_tsne_pre(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, ve
     tmp_dir_path = os.path.abspath(path_join(os.path.dirname(__file__), "windows",))
 
     init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,
-                 verbose=verbose, initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
+                 initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
 
 
 def debug_bh_tsne_post():
