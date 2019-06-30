@@ -10,6 +10,7 @@
 #
 
 import numpy as np
+import pandas as pd
 import os
 
 DEFAULT_DIR = 'MNIST'
@@ -17,8 +18,9 @@ DEFAULT_DIR = 'MNIST'
 
 def load_mnist_data(all_data=False, dir_name=DEFAULT_DIR):
     if all_data:
-        mnist_train = np.loadtxt(fname=os.path.join(dir_name, 'mnist_train.csv'), delimiter=',', skiprows=1)
-        mnist_test = np.loadtxt(fname=os.path.join(dir_name, 'mnist_test.csv'), delimiter=',', skiprows=1)
+        # speedup loading using pd.readcsv
+        mnist_train = pd.read_csv(os.path.join(dir_name, 'mnist_train.csv')).values
+        mnist_test = pd.read_csv(os.path.join(dir_name, 'mnist_test.csv')).values
 
         # for now, we don't care for train test split
 

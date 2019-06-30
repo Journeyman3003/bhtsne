@@ -82,16 +82,13 @@ def _argparse():
     argparse = ArgumentParser('bh_tsne Python wrapper')
     argparse.add_argument('-d', '--no_dims', type=int,
                           default=DEFAULT_NO_DIMS)
-    argparse.add_argument('-p', '--perplexity', type=float,
-            default=DEFAULT_PERPLEXITY)
-    # 0.0 for theta is equivalent to vanilla t-SNE
+    argparse.add_argument('-p', '--perplexity', type=float, default=DEFAULT_PERPLEXITY)
     argparse.add_argument('-t', '--theta', type=float, default=DEFAULT_THETA)
     argparse.add_argument('-r', '--randseed', type=int, default=EMPTY_SEED)
     argparse.add_argument('-n', '--initial_dims', type=int, default=INITIAL_DIMENSIONS)
     argparse.add_argument('-v', '--verbose', action='store_true')
     argparse.add_argument('-i', '--input', type=FileType('r'), default=stdin)
-    argparse.add_argument('-o', '--output', type=FileType('w'),
-            default=stdout)
+    argparse.add_argument('-o', '--output', type=FileType('w'), default=stdout)
     argparse.add_argument('--use_pca', action='store_true')
     argparse.add_argument('--no_pca', dest='use_pca', action='store_false')
     argparse.set_defaults(use_pca=DEFAULT_USE_PCA)
@@ -300,8 +297,6 @@ def run_bh_tsne(data, no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, th
 
 
 def write_bh_tsne_result(bh_tsne_result_dict, directory, sep='-', *filename_extensions):
-    # TODO check if filename was specified correctly
-
     filename = "bh_tsne_result-" + sep.join(filename_extensions) + '.pickle'
     # format to abspath
     file_abspath = path_join(directory, filename)
@@ -319,16 +314,19 @@ def read_bh_tsne_result(file_abspath):
 #                                               DEBUG CODE                                                            #
 #######################################################################################################################
 
-def debug_bh_tsne_pre(data, no_dims=2, perplexity=50, theta=0.5, randseed=-1, verbose=False, initial_dims=50,
-                      use_pca=True, max_iter=1000):
+def debug_bh_tsne_pre(data):
     """
     debug TSNE pre: just write the data matrix into directory windows for windows execution
     """
 
     tmp_dir_path = os.path.abspath(path_join(os.path.dirname(__file__), "windows",))
 
-    init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, perplexity=perplexity, theta=theta, randseed=randseed,
-                 initial_dims=initial_dims, use_pca=use_pca, max_iter=max_iter)
+    init_bh_tsne(data, tmp_dir_path, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL_DIMENSIONS,
+                 perplexity=DEFAULT_PERPLEXITY, learning_rate=DEFAULT_LEARNING_RATE, momentum=DEFAULT_MOMENTUM,
+                 final_momentum=DEFAULT_FINAL_MOMENTUM, theta=DEFAULT_THETA, randseed=EMPTY_SEED,
+                 use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS, stop_lying_iter=DEFAULT_STOP_LYING_ITERATION,
+                 restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
+                 momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=DEFAULT_EXAGGERATION_FACTOR)
 
 
 def debug_bh_tsne_post():
