@@ -164,6 +164,10 @@ def tsne_parametertuning_workflow(parameter_name, value_list, data, result_base_
 if __name__ == "__main__":
     from sys import argv
     from distutils.util import strtobool
+
+    # for default debug operation
+    data_name = MNIST_TEST
+
     if len(argv) != 2 or argv[1] not in [MNIST, MNIST_TEST]:
         print("Error: did not call script passing correct data identifier!\n"
               "Please pass either of the following data identifiers:\n"
@@ -180,7 +184,8 @@ if __name__ == "__main__":
             except ValueError:
                 print("Please answer 'yes' ('y') or 'no' ('n').")
                 continue
-
+    else:
+        data_name = argv[1]
     # initialize directories
     init_directories()
 
@@ -219,70 +224,70 @@ if __name__ == "__main__":
     ###########################################################
 
     tsne_parametertuning_workflow(parameter_name="max_iter", value_list=T_MAX, data=data,
-                                  data_result_subdirectory=argv[1], result_base_dir=TMAX_TUNING_DIR)
+                                  data_result_subdirectory=data_name, result_base_dir=TMAX_TUNING_DIR)
 
     # ###########################################################
     # #               PARAMETER TUNING - PERPLEXITY             #
     # ###########################################################
     #
     # tsne_parametertuning_workflow(parameter_name="perplexity", value_list=PERPLEXITY, data=data,
-    #                               data_result_subdirectory=argv[1], result_base_dir=PERPLEXITY_TUNING_DIR)
+    #                               data_result_subdirectory=data_name, result_base_dir=PERPLEXITY_TUNING_DIR)
     #
     # ###########################################################
     # #               PARAMETER TUNING - EXAGGERATION           #
     # ###########################################################
     #
     # tsne_parametertuning_workflow(parameter_name="lying_factor", value_list=EXAGGERATION, data=data,
-    #                               data_result_subdirectory=argv[1], result_base_dir=EXAGGERATION_TUNING_DIR)
+    #                               data_result_subdirectory=data_name, result_base_dir=EXAGGERATION_TUNING_DIR)
     #
     # ###########################################################
     # #               PARAMETER TUNING - THETA                  #
     # ###########################################################
     #
     # tsne_parametertuning_workflow(parameter_name="theta", value_list=THETA, data=data,
-    #                               data_result_subdirectory=argv[1], result_base_dir=THETA_TUNING_DIR)
+    #                               data_result_subdirectory=data_name, result_base_dir=THETA_TUNING_DIR)
     #
     # ###########################################################
     # #               PARAMETER TUNING - LEARNING RATE          #
     # ###########################################################
     #
     # tsne_parametertuning_workflow(parameter_name="learning_rate", value_list=LEARNING_RATE, data=data,
-    #                               data_result_subdirectory=argv[1], result_base_dir=LEARNING_RATE_TUNING_DIR)
+    #                               data_result_subdirectory=data_name, result_base_dir=LEARNING_RATE_TUNING_DIR)
     #
     # ###########################################################
     # #               PARAMETER TUNING - MOMENTUM               #
     # ###########################################################
     #
     # tsne_parametertuning_workflow(parameter_name="momentum", value_list=MOMENTUM, data=data,
-    #                               data_result_subdirectory=argv[1], result_base_dir=MOMENTUM_TUNING_DIR)
+    #                               data_result_subdirectory=data_name, result_base_dir=MOMENTUM_TUNING_DIR)
     #
     # ###########################################################
     # #               PARAMETER TUNING - FINAL MOMENTUM         #
     # ###########################################################
     #
     # tsne_parametertuning_workflow(parameter_name="final_momentum", value_list=FINAL_MOMENTUM, data=data,
-    #                               data_result_subdirectory=argv[1], result_base_dir=FINAL_MOMENTUM_TUNING_DIR)
+    #                               data_result_subdirectory=data_name, result_base_dir=FINAL_MOMENTUM_TUNING_DIR)
     #
     # ###########################################################
     # #               PARAMETER TUNING - STOP LYING ITER        #
     # ###########################################################
     #
     # tsne_parametertuning_workflow(parameter_name="stop_lying_iter", value_list=STOP_LYING_ITER, data=data,
-    #                               data_result_subdirectory=argv[1], result_base_dir=STOP_LYING_TUNING_DIR)
+    #                               data_result_subdirectory=data_name, result_base_dir=STOP_LYING_TUNING_DIR)
     #
     # ###########################################################
     # #               PARAMETER TUNING - RESTART LYING ITER     #
     # ###########################################################
     #
     # tsne_parametertuning_workflow(parameter_name="restart_lying_iter", value_list=RESTART_LYING_ITER, data=data,
-    #                               data_result_subdirectory=argv[1], result_base_dir=RESTART_LYING_TUNING_DIR)
+    #                               data_result_subdirectory=data_name, result_base_dir=RESTART_LYING_TUNING_DIR)
     #
     # ###########################################################
     # #               PARAMETER TUNING - MOMENTUM SWITCH ITER   #
     # ###########################################################
     #
     # tsne_parametertuning_workflow(parameter_name="momentum_switch_iter", value_list=MOMENTUM_SWITCH_ITER, data=data,
-    #                               data_result_subdirectory=argv[1], result_base_dir=MOMENTUM_SWITCH_TUNING_DIR)
+    #                               data_result_subdirectory=data_name, result_base_dir=MOMENTUM_SWITCH_TUNING_DIR)
 
     # create zip archive of results
     shutil.make_archive(RESULT_DIR, 'zip', RESULT_DIR)
