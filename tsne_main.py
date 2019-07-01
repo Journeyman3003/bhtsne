@@ -155,7 +155,7 @@ def tsne_parametertuning_workflow(parameter_name, value_list, data, result_base_
 
         print("Tuning parameter: " + parameter_name + ", value: " + str(value))
         # 5 times to validate
-        for i in range(5):
+        for i in range(1):
             print("###", "### Round:" + str(i+1), "###")
             # create directory if non-existent
             result_dir = os.path.join(result_base_dir, str(value), data_result_subdirectory, str(i + 1))
@@ -166,8 +166,8 @@ def tsne_parametertuning_workflow(parameter_name, value_list, data, result_base_
                 pass
 
             # run t-SNE
-            bh_tsne_dict = bhtsne.run_bh_tsne(data, initial_dims=data.shape[1], verbose=True,
-                                              **{parameter_name: value})
+            # perform PCA to 50 dims beforehand
+            bh_tsne_dict = bhtsne.run_bh_tsne(data, verbose=True, **{parameter_name: value})
 
             # save results
             # timestamp
