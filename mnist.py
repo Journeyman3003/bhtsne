@@ -5,8 +5,7 @@
 # MNIST/mnist2500_X.txt - space separated X values
 # MNIST/mnist2500_labels.txt - space separated labels
 #
-# MNIST/mnist_train.csv - comma separated, all 60.000 observations
-# MNIST/mnist_test.csv - comma separated, all 10.000 test observations, not used for now
+# MNIST repository: http://deeplearning.net/data/mnist/mnist.pkl.gz
 #
 
 import numpy as np
@@ -20,15 +19,15 @@ DEFAULT_DIR = 'MNIST'
 
 
 def load_mnist_data(all_data=False, dir_name=DEFAULT_DIR):
-    os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), DEFAULT_DIR))
     if all_data:
-        if not os.path.exists(os.path.join(DEFAULT_DIR, 'mnist.pkl.gz')):
+        pickle_mnist = os.path.join(DEFAULT_DIR, 'mnist.pkl.gz')
+        if not os.path.exists(pickle_mnist):
             print('downloading MNIST')
-            urllib.request.urlretrieve('http://deeplearning.net/data/mnist/mnist.pkl.gz', 'mnist.pkl.gz')
+            urllib.request.urlretrieve('http://deeplearning.net/data/mnist/mnist.pkl.gz', pickle_mnist)
             print('downloaded')
 
-        with gzip.open("mnist.pkl.gz", "rb") as zip:
-            train, val, test = pickle.load(zip, encoding='latin1')
+        with gzip.open(pickle_mnist, "rb") as mnist_unzip:
+            train, val, test = pickle.load(mnist_unzip, encoding='latin1')
 
         # Get all data in one array
         _train = np.asarray(train[0], dtype=np.float64)

@@ -3,10 +3,15 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+import bhtsne
 
 # directory structure
 CWD = os.path.dirname(os.path.realpath(__file__))
 PLOT_DIR = os.path.join(CWD, "plots")
+
+
+if __name__ == "__main__":
+
 
 
 # # plots

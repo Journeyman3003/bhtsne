@@ -15,6 +15,45 @@ RECEIVER_EMAIL = "toby.mai@web.de"  # Enter receiver address
 PASSWORD = "tdstrbtdstchstcnghbrmbddng"
 
 
+def send_error(logfile_name, logfile_path):
+    # instance of MIMEMultipart
+    msg = MIMEMultipart()
+
+    # storing the senders email address
+    msg['From'] = SENDER_EMAIL
+
+    # storing the receivers email address
+    msg['To'] = RECEIVER_EMAIL
+
+    # storing the subject
+    msg['Subject'] = "t-SNE crashed"
+
+    # string to store the body of the mail
+    body = "Whoops! The process died, please refer to logfile."
+
+    # attach the body with the msg instance
+    msg.attach(MIMEText(body, 'plain'))
+
+    # attach logfile
+    # instance of MIMEBase and named as p
+    p = MIMEBase('application', 'octet-stream')
+    # To change the payload into encoded form
+    p.set_payload((open(logfile_path, "rb")).read())
+    # encode into base64
+    encoders.encode_base64(p)
+    p.add_header('Content-Disposition', "attachment; filename= %s" % logfile_name)
+    # attach the instance 'p' to instance 'msg'
+    msg.attach(p)
+
+    # Converts the Multipart msg into a string
+    text = msg.as_string()
+
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL(SMTP_SERVER, PORT, context=context) as server:
+        server.login(SENDER_EMAIL, PASSWORD)
+        server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, text)
+
+
 def send_mail(logfile_name, logfile_path, result_archive_name, result_archive_path):
     # instance of MIMEMultipart
     msg = MIMEMultipart()
@@ -56,23 +95,8 @@ def send_mail(logfile_name, logfile_path, result_archive_name, result_archive_pa
     # attach the instance 'p' to instance 'msg'
     msg.attach(p)
 
-    # creates SMTP session
-    # s = smtplib.SMTP('smtp.gmail.com', 587)
-
-    # start TLS for security
-    # s.starttls()
-
-    # Authentication
-    # s.login(fromaddr, "Password_of_the_sender")
-
     # Converts the Multipart msg into a string
     text = msg.as_string()
-
-    # sending the mail
-    # s.sendmail(fromaddr, toaddr, text)
-
-    # terminating the session
-    # s.quit()
 
     context = ssl.create_default_context()
     with smtplib.SMTP_SSL(SMTP_SERVER, PORT, context=context) as server:

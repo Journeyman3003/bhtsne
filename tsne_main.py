@@ -5,9 +5,9 @@ import bhtsne
 from datetime import datetime
 import os
 
-# data load/preprocessing
 # MNIST
 import mnist
+
 import notification
 import logging
 from streamlogger import StreamToLogger
@@ -22,6 +22,8 @@ RESULT_ZIP = os.path.join(CWD, "results.zip")
 # DATA SUBDIRECTORIES
 MNIST_TEST = "mnist2500"
 MNIST = "mnist"
+
+DATA_SETS = [MNIST_TEST, MNIST]
 # ...
 
 # Parameter tuning
@@ -66,13 +68,27 @@ RESTART_LYING_ITER = [750]
 MOMENTUM_SWITCH_ITER = [500, 750, 1000]
 
 
-def init_directories():
-    # try:
-    #     os.makedirs(PLOT_DIR)
-    # except FileExistsError:
-    #     # directory already exists
-    #     pass
+#############################################
+#       PARAMETER TUNING - DICTIONARY       #
+#############################################
 
+# Python dict to retrieve all params by key
+# parameter-name: [value-list, directory to store results]
+PARAM_DICT = {
+    "max_iter": [T_MAX, TMAX_TUNING_DIR],
+    "perplexity": [PERPLEXITY, PERPLEXITY_TUNING_DIR],
+    "lying_factor": [EXAGGERATION, EXAGGERATION_TUNING_DIR],
+    "theta": [THETA, THETA_TUNING_DIR],
+    "learning_rate": [LEARNING_RATE, LEARNING_RATE_TUNING_DIR],
+    "momentum": [MOMENTUM, MOMENTUM_TUNING_DIR],
+    "final_momentum": [FINAL_MOMENTUM, FINAL_MOMENTUM_TUNING_DIR],
+    "stop_lying_iter": [STOP_LYING_ITER, STOP_LYING_TUNING_DIR],
+    "restart_lying_iter": [RESTART_LYING_ITER, RESTART_LYING_TUNING_DIR],
+    "momentum_switch_iter": [MOMENTUM_SWITCH_ITER, MOMENTUM_SWITCH_TUNING_DIR]
+}
+
+
+def init_directories():
     try:
         os.makedirs(PERPLEXITY_TUNING_DIR)
     except FileExistsError:
@@ -166,138 +182,109 @@ def tsne_parametertuning_workflow(parameter_name, value_list, data, result_base_
 
 
 if __name__ == "__main__":
-    from sys import argv
-    from distutils.util import strtobool
+    # put everything into try except clause and send error notification on failure
+    try:
+        from sys import argv
+        from distutils.util import strtobool
 
-    # for default debug operation
-    data_name = MNIST_TEST
+        # for default debug operation
+        data_name = MNIST_TEST
+        param_list = ["max_iter"]
 
-    if len(argv) != 2 or argv[1] not in [MNIST, MNIST_TEST]:
-        print("Error: did not call script passing correct data identifier!\n"
-              "Please pass either of the following data identifiers:\n"
-              "{}".format(str([MNIST, MNIST_TEST])))
-        while True:
-            try:
-                debug = strtobool(input("Do you want to use the mnist2500 for debugging purposes? [y/n] "))
-                if debug:
-                    print("Running in debug mode with mnist2500")
-                    break
-                else:
+        # for parallelism
+        # num_processes = 1
+
+        if len(argv) < 2:
+            print("Error: did not call script passing correct data and parameter identifier!\n"
+                  "Run script as follows: python3 tsne_main.py <data_identifier> [optional] <parameters>\n"
+                  "available data identifiers: {}".format(str(DATA_SETS)),
+                  "available [optional] parameter identifiers: {}".format(str(PARAM_DICT.keys())))
+            while True:
+                try:
+                    debug = strtobool(input("Do you want to use the mnist2500 for debugging purposes? [y/n] "))
+                    if debug:
+                        print("Running in debug mode with mnist2500")
+                        break
+                    else:
+                        print("Shutting down...")
+                        quit()
+                except ValueError:
+                    print("Please answer 'yes' ('y') or 'no' ('n').")
+                    continue
+        elif argv[1] not in [MNIST, MNIST_TEST]:
+            # validate passed dataset identifier
+            print("data identifier has to be either of the following: {}".format(str(DATA_SETS)))
+            print("Shutting down...")
+            quit()
+        elif len(argv) < 3:
+            # all parameters
+            while True:
+                try:
+                    all_param = strtobool(input("No parameter identifier specified."
+                                                "Do you want to use all parameters [y] or just maximum iterations [n]?"))
+                    if all_param:
+                        print("Using all parameters:\n {}".format(str(PARAM_DICT.keys())))
+                        break
+                    else:
+                        print("Using maximum iterations")
+                        break
+                except ValueError:
+                    print("Please answer 'yes' ('y') or 'no' ('n').")
+                    continue
+        else:
+            # selected parameters
+            for param in argv[2:]:
+                if param not in PARAM_DICT.keys():
+                    print("unrecognized parameter identifier: {}".format(param))
                     print("Shutting down...")
                     quit()
-            except ValueError:
-                print("Please answer 'yes' ('y') or 'no' ('n').")
-                continue
-    else:
-        data_name = argv[1]
-    # initialize directories
-    init_directories()
+            # all checks passed, set values
+            data_name = argv[1]
+            param_list = argv[2:]
 
-    # for very paranoid beings...
-    os.chdir(CWD)
+            # num_processes = 4 if len(param_list) >= 4 else len(param_list)
 
-    # initialize logging to file
-    init_logger()
+        # initialize directories
+        init_directories()
 
-    ###########################################################
-    #                       LOAD DATA                         #
-    ###########################################################
+        # for very paranoid beings...
+        os.chdir(CWD)
 
-    data, _ = load_data(data_name)
+        # initialize logging to file
+        init_logger()
 
-    ###########################################################
-    #                           DEBUG                         #
-    ###########################################################
+        ###########################################################
+        #                       LOAD DATA                         #
+        ###########################################################
 
-    # bhtsne.debug_bh_tsne_pre(data)
-    # embedding_dict = bhtsne.debug_bh_tsne_post()
+        data, _ = load_data(data_name)
 
-    # sanity check of error
-    # np.sum(embedding_array[:, 2])
+        ###########################################################
+        #                           DEBUG                         #
+        ###########################################################
 
-    ###########################################################
-    #                           RUN                           #
-    ###########################################################
+        # bhtsne.debug_bh_tsne_pre(data)
+        # embedding_dict = bhtsne.debug_bh_tsne_post()
 
-    # For each Data set and parameter, perform tsne 5 times to have some reliable data
+        # sanity check of error
+        # np.sum(embedding_array[:, 2])
 
-    # MNIST_TEST
+        ###########################################################
+        #                   RUN PARAMETER TUNING                  #
+        ###########################################################
 
-    ###########################################################
-    #               PARAMETER TUNING - ITERATIONS             #
-    ###########################################################
+        # For each Data set and parameter, perform tsne 5 times to have some reliable data
 
-    tsne_parametertuning_workflow(parameter_name="max_iter", value_list=T_MAX, data=data,
-                                  data_result_subdirectory=data_name, result_base_dir=TMAX_TUNING_DIR)
+        for param in param_list:
+            tsne_parametertuning_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
+                                          data_result_subdirectory=data_name, result_base_dir=PARAM_DICT[param][1])
 
-    ###########################################################
-    #               PARAMETER TUNING - PERPLEXITY             #
-    ###########################################################
+        # create zip archive of results
+        shutil.make_archive(RESULT_DIR, 'zip', RESULT_DIR)
 
-    tsne_parametertuning_workflow(parameter_name="perplexity", value_list=PERPLEXITY, data=data,
-                                  data_result_subdirectory=data_name, result_base_dir=PERPLEXITY_TUNING_DIR)
-
-    ###########################################################
-    #               PARAMETER TUNING - EXAGGERATION           #
-    ###########################################################
-
-    tsne_parametertuning_workflow(parameter_name="lying_factor", value_list=EXAGGERATION, data=data,
-                                  data_result_subdirectory=data_name, result_base_dir=EXAGGERATION_TUNING_DIR)
-
-    # ###########################################################
-    # #               PARAMETER TUNING - THETA                  #
-    # ###########################################################
-    #
-    # tsne_parametertuning_workflow(parameter_name="theta", value_list=THETA, data=data,
-    #                               data_result_subdirectory=data_name, result_base_dir=THETA_TUNING_DIR)
-    #
-    # ###########################################################
-    # #               PARAMETER TUNING - LEARNING RATE          #
-    # ###########################################################
-    #
-    # tsne_parametertuning_workflow(parameter_name="learning_rate", value_list=LEARNING_RATE, data=data,
-    #                               data_result_subdirectory=data_name, result_base_dir=LEARNING_RATE_TUNING_DIR)
-    #
-    # ###########################################################
-    # #               PARAMETER TUNING - MOMENTUM               #
-    # ###########################################################
-    #
-    # tsne_parametertuning_workflow(parameter_name="momentum", value_list=MOMENTUM, data=data,
-    #                               data_result_subdirectory=data_name, result_base_dir=MOMENTUM_TUNING_DIR)
-    #
-    # ###########################################################
-    # #               PARAMETER TUNING - FINAL MOMENTUM         #
-    # ###########################################################
-    #
-    # tsne_parametertuning_workflow(parameter_name="final_momentum", value_list=FINAL_MOMENTUM, data=data,
-    #                               data_result_subdirectory=data_name, result_base_dir=FINAL_MOMENTUM_TUNING_DIR)
-    #
-    # ###########################################################
-    # #               PARAMETER TUNING - STOP LYING ITER        #
-    # ###########################################################
-    #
-    # tsne_parametertuning_workflow(parameter_name="stop_lying_iter", value_list=STOP_LYING_ITER, data=data,
-    #                               data_result_subdirectory=data_name, result_base_dir=STOP_LYING_TUNING_DIR)
-    #
-    # ###########################################################
-    # #               PARAMETER TUNING - RESTART LYING ITER     #
-    # ###########################################################
-    #
-    # tsne_parametertuning_workflow(parameter_name="restart_lying_iter", value_list=RESTART_LYING_ITER, data=data,
-    #                               data_result_subdirectory=data_name, result_base_dir=RESTART_LYING_TUNING_DIR)
-    #
-    # ###########################################################
-    # #               PARAMETER TUNING - MOMENTUM SWITCH ITER   #
-    # ###########################################################
-    #
-    # tsne_parametertuning_workflow(parameter_name="momentum_switch_iter", value_list=MOMENTUM_SWITCH_ITER, data=data,
-    #                               data_result_subdirectory=data_name, result_base_dir=MOMENTUM_SWITCH_TUNING_DIR)
-
-    # create zip archive of results
-    #shutil.make_archive(RESULT_DIR, 'zip', RESULT_DIR)
-
-    # send final notification
-    #notification.send_mail(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH, "results.zip", RESULT_ZIP)
-
+        # send final notification
+        notification.send_mail(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH, "results.zip", RESULT_ZIP)
+    except Exception:
+        notification.send_error(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH)
 
 
