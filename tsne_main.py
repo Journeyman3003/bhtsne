@@ -177,10 +177,10 @@ def tsne_parametertuning_workflow(parameter_name, value_list, data, result_base_
 
 if __name__ == "__main__":
     # put everything into try except clause and send error notification on failure
+    from sys import argv
+    from distutils.util import strtobool
+    import traceback
     try:
-        from sys import argv
-        from distutils.util import strtobool
-
         # for default debug operation
         data_name = MNIST_TEST
         param_list = ["max_iter"]
@@ -284,6 +284,7 @@ if __name__ == "__main__":
         # send final notification
         notification.send_mail(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH, "results.zip", RESULT_ZIP, argv)
     except Exception:
+        traceback.print_exc()
         notification.send_error(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH, argv)
 
 
