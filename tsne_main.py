@@ -50,11 +50,15 @@ LOGGING_FILE_ABSPATH = os.path.join(LOGGING_DIR, LOGGING_FILE_NAME)
 
 # PARAMETER TESTING LIST
 # TMAX is also default case, removed default variable setting from parameter list
+
+# main
 T_MAX = [1000]
 PERPLEXITY = [2, 5, 10, 20, 30, 40, 100]
 EXAGGERATION = [1, 4, 8, 20]
 THETA = [0, 0.2, 0.4, 0.6, 0.8, 1]
 LEARNING_RATE = [50, 100, 500, 1000]
+
+# secondary
 MOMENTUM = [0.0, 0.2, 0.4, 0.6, 0.8]
 FINAL_MOMENTUM = [0.0, 0.2, 0.4, 0.5, 0.6]
 STOP_LYING_ITER = [500, 750, 1000]
@@ -205,7 +209,7 @@ if __name__ == "__main__":
     #                           DEBUG                         #
     ###########################################################
 
-    bhtsne.debug_bh_tsne_pre(data)
+    # bhtsne.debug_bh_tsne_pre(data)
     # embedding_dict = bhtsne.debug_bh_tsne_post()
 
     # sanity check of error
@@ -223,23 +227,23 @@ if __name__ == "__main__":
     #               PARAMETER TUNING - ITERATIONS             #
     ###########################################################
 
-    #tsne_parametertuning_workflow(parameter_name="max_iter", value_list=T_MAX, data=data,
-    #                              data_result_subdirectory=data_name, result_base_dir=TMAX_TUNING_DIR)
+    tsne_parametertuning_workflow(parameter_name="max_iter", value_list=T_MAX, data=data,
+                                  data_result_subdirectory=data_name, result_base_dir=TMAX_TUNING_DIR)
 
-    # ###########################################################
-    # #               PARAMETER TUNING - PERPLEXITY             #
-    # ###########################################################
-    #
-    # tsne_parametertuning_workflow(parameter_name="perplexity", value_list=PERPLEXITY, data=data,
-    #                               data_result_subdirectory=data_name, result_base_dir=PERPLEXITY_TUNING_DIR)
-    #
-    # ###########################################################
-    # #               PARAMETER TUNING - EXAGGERATION           #
-    # ###########################################################
-    #
-    # tsne_parametertuning_workflow(parameter_name="lying_factor", value_list=EXAGGERATION, data=data,
-    #                               data_result_subdirectory=data_name, result_base_dir=EXAGGERATION_TUNING_DIR)
-    #
+    ###########################################################
+    #               PARAMETER TUNING - PERPLEXITY             #
+    ###########################################################
+
+    tsne_parametertuning_workflow(parameter_name="perplexity", value_list=PERPLEXITY, data=data,
+                                  data_result_subdirectory=data_name, result_base_dir=PERPLEXITY_TUNING_DIR)
+
+    ###########################################################
+    #               PARAMETER TUNING - EXAGGERATION           #
+    ###########################################################
+
+    tsne_parametertuning_workflow(parameter_name="lying_factor", value_list=EXAGGERATION, data=data,
+                                  data_result_subdirectory=data_name, result_base_dir=EXAGGERATION_TUNING_DIR)
+
     # ###########################################################
     # #               PARAMETER TUNING - THETA                  #
     # ###########################################################
