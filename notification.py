@@ -15,7 +15,7 @@ RECEIVER_EMAIL = "toby.mai@web.de"  # Enter receiver address
 PASSWORD = "tdstrbtdstchstcnghbrmbddng"
 
 
-def send_error(logfile_name, logfile_path):
+def send_error(logfile_name, logfile_path, tsne_main_call):
     # instance of MIMEMultipart
     msg = MIMEMultipart()
 
@@ -29,7 +29,8 @@ def send_error(logfile_name, logfile_path):
     msg['Subject'] = "t-SNE crashed"
 
     # string to store the body of the mail
-    body = "Whoops! The process died, please refer to logfile."
+
+    body = "Execution crashed: {}\nWhoops! The process died, please refer to logfile.".format(" ".join(tsne_main_call))
 
     # attach the body with the msg instance
     msg.attach(MIMEText(body, 'plain'))
@@ -54,7 +55,7 @@ def send_error(logfile_name, logfile_path):
         server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, text)
 
 
-def send_mail(logfile_name, logfile_path, result_archive_name, result_archive_path):
+def send_mail(logfile_name, logfile_path, result_archive_name, result_archive_path, tsne_main_call):
     # instance of MIMEMultipart
     msg = MIMEMultipart()
 
@@ -68,7 +69,7 @@ def send_mail(logfile_name, logfile_path, result_archive_name, result_archive_pa
     msg['Subject'] = "t-SNE finished"
 
     # string to store the body of the mail
-    body = "This message is sent from Python."
+    body = "Execution finished: {}\nThis message is sent from Python.".format(" ".join(tsne_main_call))
 
     # attach the body with the msg instance
     msg.attach(MIMEText(body, 'plain'))
@@ -105,4 +106,4 @@ def send_mail(logfile_name, logfile_path, result_archive_name, result_archive_pa
 
 
 if __name__ == '__main__':
-    send_mail("","","","")
+    send_mail("","","","","")

@@ -90,13 +90,7 @@ PARAM_DICT = {
 
 def init_directories():
     try:
-        os.makedirs(PERPLEXITY_TUNING_DIR)
-    except FileExistsError:
-        # directory already exists
-        pass
-
-    try:
-        os.makedirs(TMAX_TUNING_DIR)
+        os.makedirs(PARAMTUNING_DIR)
     except FileExistsError:
         # directory already exists
         pass
@@ -287,8 +281,8 @@ if __name__ == "__main__":
         shutil.make_archive(RESULT_DIR, 'zip', RESULT_DIR)
 
         # send final notification
-        notification.send_mail(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH, "results.zip", RESULT_ZIP)
+        notification.send_mail(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH, "results.zip", RESULT_ZIP, argv)
     except Exception:
-        notification.send_error(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH)
+        notification.send_error(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH, argv)
 
 
