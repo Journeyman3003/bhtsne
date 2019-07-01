@@ -78,13 +78,13 @@ PARAM_DICT = {
     "max_iter": [T_MAX, TMAX_TUNING_DIR],
     "perplexity": [PERPLEXITY, PERPLEXITY_TUNING_DIR],
     "lying_factor": [EXAGGERATION, EXAGGERATION_TUNING_DIR],
-    "theta": [THETA, THETA_TUNING_DIR],
     "learning_rate": [LEARNING_RATE, LEARNING_RATE_TUNING_DIR],
     "momentum": [MOMENTUM, MOMENTUM_TUNING_DIR],
     "final_momentum": [FINAL_MOMENTUM, FINAL_MOMENTUM_TUNING_DIR],
     "stop_lying_iter": [STOP_LYING_ITER, STOP_LYING_TUNING_DIR],
     "restart_lying_iter": [RESTART_LYING_ITER, RESTART_LYING_TUNING_DIR],
-    "momentum_switch_iter": [MOMENTUM_SWITCH_ITER, MOMENTUM_SWITCH_TUNING_DIR]
+    "momentum_switch_iter": [MOMENTUM_SWITCH_ITER, MOMENTUM_SWITCH_TUNING_DIR],
+    "theta": [THETA, THETA_TUNING_DIR]
 }
 
 
@@ -226,6 +226,7 @@ if __name__ == "__main__":
                     print("Please answer 'yes' ('y') or 'no' ('n').")
                     continue
         elif argv[2] == "all":
+            # all parameters from dict
             print("Using all parameters")
             data_name = argv[1]
             param_list = PARAM_DICT.keys()
