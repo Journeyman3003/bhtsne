@@ -274,9 +274,9 @@ if __name__ == "__main__":
 
         # For each Data set and parameter, perform tsne 5 times to have some reliable data
 
-        # for param in param_list:
-        #     tsne_parametertuning_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
-        #                                   data_result_subdirectory=data_name, result_base_dir=PARAM_DICT[param][1])
+        for param in param_list:
+            tsne_parametertuning_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
+                                          data_result_subdirectory=data_name, result_base_dir=PARAM_DICT[param][1])
 
         # create zip archive of results
         shutil.make_archive(RESULT_DIR, 'zip', RESULT_DIR)
