@@ -26,6 +26,7 @@ plots
 # ignore logfiles
 *.log
 logging
+nohup.out
 
 # ignore results (for now)
 results
