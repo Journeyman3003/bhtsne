@@ -10,22 +10,37 @@
 #
 
 import numpy as np
-import pandas as pd
+import pickle
 import os
+import gzip
+import urllib.request
+
 
 DEFAULT_DIR = 'MNIST'
 
 
 def load_mnist_data(all_data=False, dir_name=DEFAULT_DIR):
+    os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), DEFAULT_DIR))
     if all_data:
-        # speedup loading using pd.readcsv
-        mnist_train = pd.read_csv(os.path.join(dir_name, 'mnist_train.csv')).values
-        mnist_test = pd.read_csv(os.path.join(dir_name, 'mnist_test.csv')).values
+        if not os.path.exists(os.path.join(DEFAULT_DIR, 'mnist.pkl.gz')):
+            print('downloading MNIST')
+            urllib.request.urlretrieve('http://deeplearning.net/data/mnist/mnist.pkl.gz', 'mnist.pkl.gz')
+            print('downloaded')
 
-        # for now, we don't care for train test split
+        with gzip.open("mnist.pkl.gz", "rb") as zip:
+            train, val, test = pickle.load(zip, encoding='latin1')
 
-        mnist = np.vstack((mnist_train, mnist_test))
-        return mnist[:, 1:], mnist[:, 0]
+        # Get all data in one array
+        _train = np.asarray(train[0], dtype=np.float64)
+        _val = np.asarray(val[0], dtype=np.float64)
+        _test = np.asarray(test[0], dtype=np.float64)
+        mnist = np.vstack((_train, _val, _test))
+
+        # Also the classes, for labels in the plot later
+        classes = np.hstack((train[1], val[1], test[1]))
+
+        return mnist, classes
+
     else:
         mnist = np.loadtxt(fname=os.path.join(dir_name, 'mnist2500_X.txt'))
         label = np.loadtxt(fname=os.path.join(dir_name, 'mnist2500_labels.txt'))

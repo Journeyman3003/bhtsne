@@ -205,7 +205,7 @@ if __name__ == "__main__":
     #                           DEBUG                         #
     ###########################################################
 
-    # bhtsne.debug_bh_tsne_pre(mnist_data, initial_dims=mnist_data.shape[1], verbose=True)
+    bhtsne.debug_bh_tsne_pre(data)
     # embedding_dict = bhtsne.debug_bh_tsne_post()
 
     # sanity check of error
@@ -223,8 +223,8 @@ if __name__ == "__main__":
     #               PARAMETER TUNING - ITERATIONS             #
     ###########################################################
 
-    tsne_parametertuning_workflow(parameter_name="max_iter", value_list=T_MAX, data=data,
-                                  data_result_subdirectory=data_name, result_base_dir=TMAX_TUNING_DIR)
+    #tsne_parametertuning_workflow(parameter_name="max_iter", value_list=T_MAX, data=data,
+    #                              data_result_subdirectory=data_name, result_base_dir=TMAX_TUNING_DIR)
 
     # ###########################################################
     # #               PARAMETER TUNING - PERPLEXITY             #
@@ -290,10 +290,10 @@ if __name__ == "__main__":
     #                               data_result_subdirectory=data_name, result_base_dir=MOMENTUM_SWITCH_TUNING_DIR)
 
     # create zip archive of results
-    shutil.make_archive(RESULT_DIR, 'zip', RESULT_DIR)
+    #shutil.make_archive(RESULT_DIR, 'zip', RESULT_DIR)
 
     # send final notification
-    notification.send_mail(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH, "results.zip", RESULT_ZIP)
+    #notification.send_mail(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH, "results.zip", RESULT_ZIP)
 
 
 
