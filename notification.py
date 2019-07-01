@@ -11,7 +11,7 @@ from email import encoders
 SMTP_SERVER = 'smtp.gmail.com'
 PORT = 465  # For SSL
 SENDER_EMAIL = "tsne.status@gmail.com"  # Enter your address
-RECEIVER_EMAIL = "toby.mai@web.de"  # Enter receiver address
+RECEIVER_EMAIL = "tsne.status@gmail.com"  # Enter receiver address
 PASSWORD = "tdstrbtdstchstcnghbrmbddng"
 
 
