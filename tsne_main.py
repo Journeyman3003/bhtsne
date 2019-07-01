@@ -231,6 +231,10 @@ if __name__ == "__main__":
                 except ValueError:
                     print("Please answer 'yes' ('y') or 'no' ('n').")
                     continue
+        elif argv[2] == "all":
+            print("Using all parameters")
+            data_name = argv[1]
+            param_list = PARAM_DICT.keys()
         else:
             # selected parameters
             for param in argv[2:]:

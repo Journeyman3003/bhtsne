@@ -20,7 +20,7 @@ DEFAULT_DIR = 'MNIST'
 
 def load_mnist_data(all_data=False, dir_name=DEFAULT_DIR):
     if all_data:
-        pickle_mnist = os.path.join(DEFAULT_DIR, 'mnist.pkl.gz')
+        pickle_mnist = os.path.join(dir_name, 'mnist.pkl.gz')
         if not os.path.exists(pickle_mnist):
             print('downloading MNIST')
             urllib.request.urlretrieve('http://deeplearning.net/data/mnist/mnist.pkl.gz', pickle_mnist)
