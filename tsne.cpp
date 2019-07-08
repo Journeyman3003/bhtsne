@@ -145,18 +145,25 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 
     // Lie about the P-values
     if(exact) { for(int i = 0; i < N * N; i++)        P[i] *= lying_factor; } //default was 12.0
-    else {      for(int i = 0; i < row_P[N]; i++) val_P[i] *= lying_factor; } //default was 12.0
+    else {      for(int i = 0; i < row_P[N]; i++) val_P[i] *= lying_factor; } //default was 12.0						
 
-	// Initialize solution (randomly)
-  if (skip_random_init != true) {
-  	for(int i = 0; i < N * no_dims; i++) Y[i] = randn() * .0001;
-  }
-
-	// Perform main training loop
     if(exact) printf("Input similarities computed in %4.2f seconds!\nLearning embedding...\n", (float) (end - start) / CLOCKS_PER_SEC);
     else printf("Input similarities computed in %4.2f seconds (sparsity = %f)!\nLearning embedding...\n", (float) (end - start) / CLOCKS_PER_SEC, (double) row_P[N] / ((double) N * (double) N));
-    start = clock();
+    
+	// Initialize solution (randomly)
+	if (skip_random_init != true) {
+		for (int i = 0; i < N * no_dims; i++) Y[i] = randn() * .0001;
+	}
 
+	// Save results of iteration 0
+	double C = .0;
+	if (exact) C = evaluateError(P, Y, N, no_dims, costs);
+	else       C = evaluateError(row_P, col_P, val_P, Y, N, no_dims, theta, costs);  // doing approximate computation here!
+	printf("Initial Solution: error is %f\n", C);
+	save_data(Y, landmarks, costs, N, no_dims, 0);
+
+	// Perform main training loop
+	start = clock();
 	for(int iter = 0; iter < max_iter; iter++) {
 
         // Compute (approximate) gradient
@@ -701,9 +708,8 @@ static double randn() {
 
 // Function that loads data from a t-SNE file
 // Note: this function does a malloc that should be freed elsewhere
-bool TSNE::load_data(double** data, int* n, int* d, int* no_dims, double* theta, double* perplexity, double* eta, double* momentum, double* final_momentum,
-	int* rand_seed, int* max_iter, int* stop_lying_iter, int* restart_lying_iter, int* momentum_switch_iter, int* lying_factor) {
-
+bool TSNE::load_data(double** data, int* n, int* d, double** initial_solution, int* no_dims, double* theta, double* perplexity, double* eta, double* momentum, double* final_momentum,
+	int* rand_seed, int* max_iter, int* stop_lying_iter, int* restart_lying_iter, int* momentum_switch_iter, int* lying_factor, bool* skip_random_init) {
 	// Open file, read first 2 integers, allocate memory, and read the data
     FILE *h;
 	if((h = fopen("data.dat", "r+b")) == NULL) {
@@ -712,34 +718,60 @@ bool TSNE::load_data(double** data, int* n, int* d, int* no_dims, double* theta,
 	}
 	fread(n, sizeof(int), 1, h);											// number of datapoints
 	printf("number of data points = %d\n", *n);
+
 	fread(d, sizeof(int), 1, h);											// original dimensionality
 	printf("original dimensionality = %d \n", *d);
+
     fread(theta, sizeof(double), 1, h);										// gradient accuracy
 	printf("gradient accuracy = %f\n", *theta);
+
 	fread(perplexity, sizeof(double), 1, h);								// perplexity
 	printf("perplexity = %f\n", *perplexity);
+
 	fread(eta, sizeof(double), 1, h);										// learning rate eta
 	printf("eta = %f\n", *eta);
+
 	fread(momentum, sizeof(double), 1, h);									// momentum
 	printf("momentum = %f\n", *momentum);
+
 	fread(final_momentum, sizeof(double), 1, h);							// final momentum
 	printf("final momentum = %f\n", *final_momentum);
+
 	fread(no_dims, sizeof(int), 1, h);                                      // output dimensionality
 	printf("output dimensionality = %d\n", *no_dims);
+
     fread(max_iter, sizeof(int),1,h);                                       // maximum number of iterations
 	printf("max iterations = %d\n", *max_iter);
+
 	fread(stop_lying_iter, sizeof(int), 1, h);                              // iteration when to stop lying about P values
 	printf("iteration when to stop lying about P values = %d\n", *stop_lying_iter);
+
 	fread(restart_lying_iter, sizeof(int), 1, h);                           // iteration when to restart lying about P values
 	printf("iteration when to restart lying about P values = %d\n", *restart_lying_iter);
+
 	fread(momentum_switch_iter, sizeof(int), 1, h);                         // iteration when to switch momentum to final momentum
 	printf("iteration when to switch momentum to final momentum = %d\n", *momentum_switch_iter);
+
 	fread(lying_factor, sizeof(int), 1, h);									// lying/exaggeration factor
 	printf("lying factor = %d\n", *lying_factor);
-	*data = (double*) malloc(*d * *n * sizeof(double));
+
+	*data = (double*) malloc(*n * *d * sizeof(double));
     if(*data == NULL) { printf("Memory allocation failed!\n"); exit(1); }
     fread(*data, sizeof(double), *n * *d, h);                               // the data
-    if(!feof(h)) fread(rand_seed, sizeof(int), 1, h);                       // random seed
+
+	fread(rand_seed, sizeof(int), 1, h);
+	printf("Random seed set to %i\n", *rand_seed);							// random seed (even if no seed is passed, it is set to -1 (thanks to fread default passing amount of successfully read elements)
+	
+	*initial_solution = (double*)malloc(*n * *no_dims * sizeof(double));
+	if (*initial_solution == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	fread(*initial_solution, sizeof(double), *n * *no_dims, h);				// the initial solution
+
+	if (!feof(h)) { //this should kick in if there was no initial solution (or not even a rand-seed) provided
+		// if there is an initial solution provided, set skip random init to true
+		printf("Initial solution Y is provided!\n");
+		*skip_random_init = true;		
+	}																		
+	
 	fclose(h);
 	printf("Read the %i x %i data matrix successfully!\n", *n, *d);
 	return true;

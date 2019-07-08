@@ -11,6 +11,7 @@ import mnist
 import notification
 import logging
 from streamlogger import StreamToLogger
+from data_initializer import get_initial_embedding
 import sys
 import shutil
 
@@ -40,6 +41,8 @@ STOP_LYING_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "stoplying")
 RESTART_LYING_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "restartlying")
 MOMENTUM_SWITCH_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "momentumswitch")
 
+# Initial solutions
+INIT = os.path.join(CWD, "initial_solutions")
 
 # Building block experiments
 BUILDINGBLOCK_DIR = os.path.join(RESULT_DIR, "buildingblocks")
@@ -107,6 +110,12 @@ def init_directories():
         # directory already exists
         pass
 
+    try:
+        os.makedirs(INIT)
+    except FileExistsError:
+        # directory already exists
+        pass
+
 
 def init_logger(logfile=LOGGING_FILE_ABSPATH):
     # logging stuff
@@ -132,9 +141,14 @@ def load_data(data_identifier):
         return mnist.load_mnist_data(all_data=True)
     elif data_identifier == MNIST_TEST:
         return mnist.load_mnist_data(all_data=False)
+    else:
+        print("unsupported data identifier: " + data_identifier)
+        print("Shutting down...")
+        quit()
 
 
-def tsne_parametertuning_workflow(parameter_name, value_list, data, result_base_dir, data_result_subdirectory):
+def tsne_parametertuning_workflow(parameter_name, value_list, data, result_base_dir, data_result_subdirectory,
+                                  initial_embedding_method=None):
     """
 
     :param parameter_name:
@@ -142,6 +156,7 @@ def tsne_parametertuning_workflow(parameter_name, value_list, data, result_base_
     :param data:
     :param result_base_dir:
     :param data_result_subdirectory:
+    :param initial_embedding_method:
     :return:
 
     """
@@ -155,19 +170,31 @@ def tsne_parametertuning_workflow(parameter_name, value_list, data, result_base_
 
         print("Tuning parameter: " + parameter_name + ", value: " + str(value))
         # 5 times to validate
-        for i in range(1):
-            print("###", "### Round:" + str(i+1), "###")
+        for i in range(1,6):
+            print("###", "### Round:" + str(i), "###")
             # create directory if non-existent
-            result_dir = os.path.join(result_base_dir, str(value), data_result_subdirectory, str(i + 1))
+            result_dir = os.path.join(result_base_dir, str(value), data_result_subdirectory, str(i))
             try:
                 os.makedirs(result_dir)
             except FileExistsError:
                 # directory already exists
                 pass
 
+            # load the initial embedding if specified
+            initial_embedding = None
+            if initial_embedding_method is not None:
+                initial_embedding = get_initial_embedding(data_name=data_result_subdirectory,
+                                                          method_name=initial_embedding_method, i=i)
+                filename = "initial_solution_" + data_result_subdirectory + "_" + initial_embedding_method  \
+                           + "_" + str(i) + ".pickle" if initial_embedding_method in ['random', 'gaussian'] \
+                           else ".pickle"
+                print("Using initial embedding file: {}".format(filename))
+
             # run t-SNE
             # perform PCA to 50 dims beforehand
-            bh_tsne_dict = bhtsne.run_bh_tsne(data, verbose=True, **{parameter_name: value})
+            # use initial embedding
+            bh_tsne_dict = bhtsne.run_bh_tsne(data, verbose=True, initial_solution=initial_embedding,
+                                              **{parameter_name: value})
 
             # save results
             # timestamp
@@ -263,6 +290,7 @@ if __name__ == "__main__":
         ###########################################################
 
         # bhtsne.debug_bh_tsne_pre(data)
+        # bhtsne.debug_data_file("windows", 2500, 784)
         # embedding_dict = bhtsne.debug_bh_tsne_post()
 
         # sanity check of error
@@ -276,7 +304,8 @@ if __name__ == "__main__":
 
         for param in param_list:
             tsne_parametertuning_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
-                                          data_result_subdirectory=data_name, result_base_dir=PARAM_DICT[param][1])
+                                          data_result_subdirectory=data_name, result_base_dir=PARAM_DICT[param][1],
+                                          initial_embedding_method="gaussian")
 
         # create zip archive of results
         shutil.make_archive(RESULT_DIR, 'zip', RESULT_DIR)

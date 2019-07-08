@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 import bhtsne
+from sys import argv
+import numpy as np
 
 # directory structure
 CWD = os.path.dirname(os.path.realpath(__file__))
@@ -11,9 +13,12 @@ PLOT_DIR = os.path.join(CWD, "plots")
 
 
 if __name__ == "__main__":
-
-
-
+    #if argv < 2:
+    #    print("Please specify the .pickle file to be read: tsne_plot.py <.pickle-file>!")
+    dictionary_bh = bhtsne.debug_bh_tsne_post()
+    #bhtsne.read_bh_tsne_result("C:\\Users\\Tobi\\git\\bhtsne\\windows\\result-0.dat")
+    init = dictionary_bh[(0,)]
+    np.sum(init[:, 2])
 # # plots
     # fig, ax = plt.subplots()
     # scatter = ax.scatter(x=mnist_latent[:, 0], y=mnist_latent[:, 1], c=mnist_latent[:, 2])

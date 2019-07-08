@@ -41,8 +41,8 @@ namespace TSNE {
     void run(double* X, int N, int D, double* Y, double* costs, int* landmarks, int no_dims, double perplexity, double eta,
 		     double momentum, double final_momentum, double theta, int rand_seed, bool skip_random_init, int max_iter, int lying_factor,
 			 int stop_lying_iter, int restart_lying_iter, int mom_switch_iter);
-	bool load_data(double** data, int* n, int* d, int* no_dims, double* theta, double* perplexity, double* eta, double* momentum, double* final_momentum,
-		           int* rand_seed, int* max_iter, int* stop_lying_iter, int* restart_lying_iter, int* momentum_switch_iter, int* lying_factor);
+	bool load_data(double** data, int* n, int* d, double** initial_solution, int* no_dims, double* theta, double* perplexity, double* eta, double* momentum, double* final_momentum,
+		           int* rand_seed, int* max_iter, int* stop_lying_iter, int* restart_lying_iter, int* momentum_switch_iter, int* lying_factor, bool* skip_random_init);
 	void save_data(double* data, int* landmarks, double* costs, int n, int d, int iter);
 #ifdef __cplusplus
 };

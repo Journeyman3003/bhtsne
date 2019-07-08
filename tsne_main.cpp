@@ -11,25 +11,33 @@ int main() {
 
     // Define parameters
 	int origN, N, D, no_dims, max_iter, stop_lying_iter, restart_lying_iter, momentum_switch_iter, lying_factor;
-	double perplexity, theta, eta, momentum, final_momentum, *data;
+	double perplexity, theta, eta, momentum, final_momentum, *data, *Y;
     int rand_seed = -1;
+	//by default, conduct a random initialization
+	bool skip_random_init = false;
 
     // Read the parameters and the dataset
-	if(TSNE::load_data(&data, &origN, &D, &no_dims, &theta, &perplexity, &eta, &momentum, &final_momentum, &rand_seed,
-		               &max_iter, &stop_lying_iter, &restart_lying_iter, &momentum_switch_iter, &lying_factor)) {
+	if(TSNE::load_data(&data, &origN, &D, &Y, &no_dims, &theta, &perplexity, &eta, &momentum, &final_momentum, &rand_seed,
+		               &max_iter, &stop_lying_iter, &restart_lying_iter, &momentum_switch_iter, &lying_factor, &skip_random_init)) {
+
+		if (skip_random_init != true) {
+			for (int i = 0; i < N * no_dims; i++) Y[i] = randn() * .0001;
+		}
 
 		// Make dummy landmarks
         N = origN;
+		skip_random_init ? printf("Skip random initialization of Y!\n") : printf("Initializing Y at random!\n");
         int* landmarks = (int*) malloc(N * sizeof(int));
         if(landmarks == NULL) { printf("Memory allocation failed!\n"); exit(1); }
         for(int n = 0; n < N; n++) landmarks[n] = n;
 
 		// Now fire up the SNE implementation
-		double* Y = (double*) malloc(N * no_dims * sizeof(double));
+		//double* Y = (double*) malloc(N * no_dims * sizeof(double));
 		double* costs = (double*) calloc(N, sizeof(double));
-        if(Y == NULL || costs == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+		if (costs == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+        //if(Y == NULL || costs == NULL) { printf("Memory allocation failed!\n"); exit(1); }
 
-		TSNE::run(data, N, D, Y, costs, landmarks, no_dims, perplexity, eta, momentum, final_momentum, theta, rand_seed, false,
+		TSNE::run(data, N, D, Y, costs, landmarks, no_dims, perplexity, eta, momentum, final_momentum, theta, rand_seed, skip_random_init,
 			      max_iter, lying_factor, stop_lying_iter, restart_lying_iter, momentum_switch_iter);
 
 		// Save the results

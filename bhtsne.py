@@ -108,27 +108,33 @@ def _is_filelike_object(f):
         return isinstance(f, io.IOBase)
 
 
-def init_bh_tsne(samples, workdir, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL_DIMENSIONS,
+def _pca(samples, target_dimensions):
+    samples = samples - np.mean(samples, axis=0)
+    cov_x = np.dot(np.transpose(samples), samples)
+    [eig_val, eig_vec] = np.linalg.eig(cov_x)
+
+    # sorting the eigen-values in the descending order
+    eig_vec = eig_vec[:, eig_val.argsort()[::-1]]
+
+    # check validity of target_dimensions
+    if target_dimensions > len(eig_vec):
+        target_dimensions = len(eig_vec)
+
+    # truncating the eigen-vectors matrix to keep the most important vectors
+    eig_vec = np.real(eig_vec[:, :target_dimensions])
+    return np.dot(samples, eig_vec)
+
+
+def init_bh_tsne(samples, workdir, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL_DIMENSIONS, initial_solution=None,
                  perplexity=DEFAULT_PERPLEXITY, learning_rate=DEFAULT_LEARNING_RATE, momentum=DEFAULT_MOMENTUM,
                  final_momentum=DEFAULT_FINAL_MOMENTUM, theta=DEFAULT_THETA, randseed=EMPTY_SEED,
                  use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS, stop_lying_iter=DEFAULT_STOP_LYING_ITERATION,
                  restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
                  momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=DEFAULT_EXAGGERATION_FACTOR):
 
+    # apply PCA if desired
     if use_pca:
-        samples = samples - np.mean(samples, axis=0)
-        cov_x = np.dot(np.transpose(samples), samples)
-        [eig_val, eig_vec] = np.linalg.eig(cov_x)
-
-        # sorting the eigen-values in the descending order
-        eig_vec = eig_vec[:, eig_val.argsort()[::-1]]
-
-        if initial_dims > len(eig_vec):
-            initial_dims = len(eig_vec)
-
-        # truncating the eigen-vectors matrix to keep the most important vectors
-        eig_vec = np.real(eig_vec[:, :initial_dims])
-        samples = np.dot(samples, eig_vec)
+        samples = _pca(samples, initial_dims)
 
     # Assume that the dimensionality of the first sample is representative for
     #   the whole batch
@@ -150,9 +156,12 @@ def init_bh_tsne(samples, workdir, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL
         # Then write the data
         for sample in samples:
             data_file.write(pack('{}d'.format(len(sample)), *sample))
-        # Write random seed if specified
-        if randseed != EMPTY_SEED:
-            data_file.write(pack('i', randseed))
+        # Write random seed always (see changes to TSNE::load_data(...))
+        data_file.write(pack('i', randseed))
+        # Write initial solution if passed
+        if initial_solution is not None:
+            for sample in initial_solution:
+                data_file.write(pack('{}d'.format(len(sample)), *sample))
 
 
 def load_data(input_file):
@@ -220,7 +229,7 @@ def run_bh_tsne(data, no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, th
                 initial_dims=INITIAL_DIMENSIONS, use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS,
                 stop_lying_iter=DEFAULT_STOP_LYING_ITERATION, restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
                 momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=DEFAULT_EXAGGERATION_FACTOR,
-                randseed=-1, verbose=False):
+                randseed=-1, initial_solution=None, verbose=False):
     """
     Run TSNE based on the Barnes-HT algorithm
 
@@ -246,11 +255,11 @@ def run_bh_tsne(data, no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, th
     if IS_WINDOWS:
 
         # for windows: run initialization immediately and do not load data into forked process
-        init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, initial_dims=initial_dims, perplexity=perplexity,
-                     learning_rate=learning_rate, momentum=momentum, final_momentum=final_momentum, theta=theta,
-                     use_pca=use_pca, max_iter=max_iter, stop_lying_iter=stop_lying_iter,
-                     restart_lying_iter=restart_lying_iter, momentum_switch_iter=momentum_switch_iter,
-                     lying_factor=lying_factor, randseed=randseed)
+        init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, initial_dims=initial_dims, initial_solution=initial_solution,
+                     perplexity=perplexity, learning_rate=learning_rate, momentum=momentum,
+                     final_momentum=final_momentum, theta=theta, use_pca=use_pca, max_iter=max_iter,
+                     stop_lying_iter=stop_lying_iter, restart_lying_iter=restart_lying_iter,
+                     momentum_switch_iter=momentum_switch_iter, lying_factor=lying_factor, randseed=randseed)
 
     else:
         # for linux: do all the linux stuff in child process
@@ -260,11 +269,11 @@ def run_bh_tsne(data, no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, th
             if _is_filelike_object(data):
                 data = load_data(data)
 
-            init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, initial_dims=initial_dims, perplexity=perplexity,
-                         learning_rate=learning_rate, momentum=momentum, final_momentum=final_momentum, theta=theta,
-                         use_pca=use_pca, max_iter=max_iter, stop_lying_iter=stop_lying_iter,
-                         restart_lying_iter=restart_lying_iter, momentum_switch_iter=momentum_switch_iter,
-                         lying_factor=lying_factor, randseed=randseed)
+            init_bh_tsne(data, tmp_dir_path, no_dims=no_dims, initial_dims=initial_dims,
+                         initial_solution=initial_solution, perplexity=perplexity, learning_rate=learning_rate,
+                         momentum=momentum, final_momentum=final_momentum, theta=theta, use_pca=use_pca,
+                         max_iter=max_iter, stop_lying_iter=stop_lying_iter, restart_lying_iter=restart_lying_iter,
+                         momentum_switch_iter=momentum_switch_iter, lying_factor=lying_factor, randseed=randseed)
             os._exit(0)
         else:
             try:
@@ -302,7 +311,7 @@ def write_bh_tsne_result(bh_tsne_result_dict, directory, sep='-', *filename_exte
     file_abspath = path_join(directory, filename)
 
     with open(file_abspath, 'wb') as pickle_file:
-        return pickle.dump(bh_tsne_result_dict, pickle_file)
+        pickle.dump(bh_tsne_result_dict, pickle_file)
 
 
 def read_bh_tsne_result(file_abspath):
@@ -323,10 +332,28 @@ def debug_bh_tsne_pre(data):
 
     init_bh_tsne(data, tmp_dir_path, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL_DIMENSIONS,
                  perplexity=DEFAULT_PERPLEXITY, learning_rate=DEFAULT_LEARNING_RATE, momentum=DEFAULT_MOMENTUM,
-                 final_momentum=DEFAULT_FINAL_MOMENTUM, theta=DEFAULT_THETA, randseed=EMPTY_SEED,
+                 final_momentum=DEFAULT_FINAL_MOMENTUM, theta=DEFAULT_THETA, randseed=42,
                  use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS, stop_lying_iter=DEFAULT_STOP_LYING_ITERATION,
                  restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
                  momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=DEFAULT_EXAGGERATION_FACTOR)
+
+
+def debug_data_file(workdir, sample_count, len_sample):
+
+    with open(path_join(workdir, 'data.dat'), 'rb') as data_file:
+        # Write the bh_tsne header
+
+        sample_count, sample_dim = _read_unpack('ii', data_file)
+        theta, perplexity, learning_rate, momentum, final_momentum = _read_unpack('ddddd', data_file)
+        no_dims, max_iter, stop_lying_iter, restart_lying_iter, momentum_switch_iter, \
+        lying_factor = _read_unpack('iiiiii', data_file)
+
+        results = [_read_unpack('{}d'.format(sample_dim), data_file) for _ in range(sample_count)]
+
+        randseed = _read_unpack('i', data_file)
+
+        while True:
+            read = _read_unpack('i', data_file)
 
 
 def debug_bh_tsne_post():
