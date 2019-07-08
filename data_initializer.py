@@ -65,7 +65,7 @@ def create_initial_solutions(data_name, data,  scaling_factor=.0001):
     np.random.seed(DEFAULT_SEED)
 
     # random and gaussian 5 times, other ones only once
-    for method in ['mds']:
+    for method in SUPPORTED_METHODS:
         if method in ['random', 'gaussian']:
             for i in range(1, 6):
                 latent_embedding = _embedding(_data=data, method=method, scaling_factor=scaling_factor)
@@ -94,8 +94,8 @@ if __name__ == '__main__':
         pass
 
     # MNIST
-    mnist_data, _ = mnist.load_mnist_data(all_data=True)
-    create_initial_solutions("mnist", mnist_data)
+    #mnist_data, _ = mnist.load_mnist_data(all_data=True)
+    #create_initial_solutions("mnist", mnist_data)
 
     # MNIST2500
     #mnist2500_data, _ = mnist.load_mnist_data(all_data=False)

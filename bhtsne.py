@@ -286,7 +286,7 @@ def run_bh_tsne(data, no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, th
     bh_tsne(tmp_dir_path, verbose)
 
     # load result files into single python dict object
-    files = [f for f in glob.glob(tmp_dir_path + "*.dat", recursive=False)]
+    files = [f for f in glob.glob(path_join(tmp_dir_path, "result*"))]
 
     # build final result dict:
     #{ 1: nparray[...]
