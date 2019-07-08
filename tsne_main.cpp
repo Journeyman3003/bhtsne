@@ -20,13 +20,8 @@ int main() {
 	if(TSNE::load_data(&data, &origN, &D, &Y, &no_dims, &theta, &perplexity, &eta, &momentum, &final_momentum, &rand_seed,
 		               &max_iter, &stop_lying_iter, &restart_lying_iter, &momentum_switch_iter, &lying_factor, &skip_random_init)) {
 
-		if (skip_random_init != true) {
-			for (int i = 0; i < N * no_dims; i++) Y[i] = randn() * .0001;
-		}
-
 		// Make dummy landmarks
         N = origN;
-		skip_random_init ? printf("Skip random initialization of Y!\n") : printf("Initializing Y at random!\n");
         int* landmarks = (int*) malloc(N * sizeof(int));
         if(landmarks == NULL) { printf("Memory allocation failed!\n"); exit(1); }
         for(int n = 0; n < N; n++) landmarks[n] = n;

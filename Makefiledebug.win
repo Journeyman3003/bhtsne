@@ -23,4 +23,5 @@ $(TARGET):
 
 clean:
 	-erase /Q *.obj *.exe *.idb *.pdb $(TARGET)\. 
-	-rd $(TARGET)
+# skip deletion of target directory for now
+#	-rd $(TARGET)

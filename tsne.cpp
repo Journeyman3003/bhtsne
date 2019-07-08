@@ -152,7 +152,11 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
     
 	// Initialize solution (randomly)
 	if (skip_random_init != true) {
+		printf("Initializing Y at random!\n");
 		for (int i = 0; i < N * no_dims; i++) Y[i] = randn() * .0001;
+	}
+	else {
+		printf("Skip random initialization of Y!\n");
 	}
 
 	// Save results of iteration 0
