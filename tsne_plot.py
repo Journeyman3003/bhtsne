@@ -27,8 +27,9 @@ def plot_bh_tsne_result(_data, _labels, _legend="full", _palette="bright", _ax=N
 def compare_two_results(_data1, _label1, _data2, _label2, figsize=(10, 5)):
     _fig, _axs = plt.subplots(ncols=2, gridspec_kw={'width_ratios': [1, 1]}, figsize=figsize)
     plot_bh_tsne_result(_data1, _label1, _legend="full", _ax=_axs[0])
+    _axs[0].set_title("Cost: {}".format(np.sum(_data1[:, 2])))
     plot_bh_tsne_result(_data2, _label2, _legend="full", _ax=_axs[1])
-
+    _axs[1].set_title("Cost: {}".format(np.sum(_data2[:, 2])))
     # retrieve legend
     _handles, _labels = _axs[0].get_legend_handles_labels()
 
@@ -52,16 +53,16 @@ if __name__ == "__main__":
 
     _, labels = mnist.load_mnist_data(False)
 
-    basepath = "C:\\Users\\Tobi\\git\\bhtsne\\results\\parametertuning\\iterations\\1000\\mnist2500\\2"
-    benchmark1 = bhtsne.read_bh_tsne_result(os.path.join(basepath, "bh_tsne_result-08-07-2019_14-07-03.pickle"))
-    benchmark2 = bhtsne.read_bh_tsne_result(os.path.join(basepath, "bh_tsne_result-08-07-2019_14-09-11.pickle"))
+    basepath = "C:\\Users\\Tobi\\git\\bhtsne\\results\\parametertuning\\iterations\\1000\\mnist2500\\3"
+    benchmark1 = bhtsne.read_bh_tsne_result(os.path.join(basepath, "bh_tsne_result-08-07-2019_16-59-33.pickle"))
+    benchmark2 = bhtsne.read_bh_tsne_result(os.path.join(basepath, "bh_tsne_result-09-07-2019_16-15-25.pickle"))
 
     for key in benchmark1.keys():
         mnist_benchmark1 = np.hstack((labels[:, None], benchmark1[key]))
         mnist_benchmark2 = np.hstack((labels[:, None], benchmark2[key]))
 
-        fig = compare_two_results(mnist_benchmark1[:, 1:3], mnist_benchmark1[:, 0],
-                                  mnist_benchmark2[:, 1:3], mnist_benchmark2[:, 0])
+        fig = compare_two_results(mnist_benchmark1[:, 1:4], mnist_benchmark1[:, 0],
+                                  mnist_benchmark2[:, 1:4], mnist_benchmark2[:, 0])
         save_figure(fig, PLOT_DIR, "-", "testcompare2", str(key[0]))
 
 # # plots
