@@ -23,8 +23,9 @@ RESULT_ZIP = os.path.join(CWD, "results.zip")
 # DATA SUBDIRECTORIES
 MNIST_TEST = "mnist2500"
 MNIST = "mnist"
+FASHION_MNIST = "fashion_mnist"
 
-DATA_SETS = [MNIST_TEST, MNIST]
+DATA_SETS = [MNIST_TEST, MNIST, FASHION_MNIST]
 # ...
 
 # Parameter tuning
@@ -80,14 +81,14 @@ MOMENTUM_SWITCH_ITER = [500, 750, 1000]
 PARAM_DICT = {
     "max_iter": [T_MAX, TMAX_TUNING_DIR],
     "perplexity": [PERPLEXITY, PERPLEXITY_TUNING_DIR],
+    "theta": [THETA, THETA_TUNING_DIR],
     "lying_factor": [EXAGGERATION, EXAGGERATION_TUNING_DIR],
     "learning_rate": [LEARNING_RATE, LEARNING_RATE_TUNING_DIR],
     "momentum": [MOMENTUM, MOMENTUM_TUNING_DIR],
     "final_momentum": [FINAL_MOMENTUM, FINAL_MOMENTUM_TUNING_DIR],
     "stop_lying_iter": [STOP_LYING_ITER, STOP_LYING_TUNING_DIR],
     "restart_lying_iter": [RESTART_LYING_ITER, RESTART_LYING_TUNING_DIR],
-    "momentum_switch_iter": [MOMENTUM_SWITCH_ITER, MOMENTUM_SWITCH_TUNING_DIR],
-    "theta": [THETA, THETA_TUNING_DIR]
+    "momentum_switch_iter": [MOMENTUM_SWITCH_ITER, MOMENTUM_SWITCH_TUNING_DIR]
 }
 
 
@@ -141,6 +142,8 @@ def load_data(data_identifier):
         return mnist.load_mnist_data(all_data=True)
     elif data_identifier == MNIST_TEST:
         return mnist.load_mnist_data(all_data=False)
+    elif data_identifier == FASHION_MNIST:
+        return mnist.load_fashion_mnist_data()
     else:
         print("unsupported data identifier: " + data_identifier)
         print("Shutting down...")
@@ -170,7 +173,7 @@ def tsne_parametertuning_workflow(parameter_name, value_list, data, result_base_
 
         print("Tuning parameter: " + parameter_name + ", value: " + str(value))
         # 5 times to validate
-        for i in range(1,6):
+        for i in range(1, 6):
             print("###", "### Round:" + str(i), "###")
             # create directory if non-existent
             result_dir = os.path.join(result_base_dir, str(value), data_result_subdirectory, str(i))

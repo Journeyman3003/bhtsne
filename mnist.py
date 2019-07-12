@@ -82,7 +82,7 @@ def load_fashion_mnist_data(dir_name=DEFAULT_DIR):
         fashion_mnist_images = np.vstack((fashion_mnist_images, images))
         fashion_mnist_labels = np.hstack((fashion_mnist_labels, labels))
 
-    return images, labels
+    return fashion_mnist_images, fashion_mnist_labels
 
 
 def mnist_1d_to_2d(data, num_observations=70000, img_rows=28, img_cols=28):

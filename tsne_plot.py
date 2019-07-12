@@ -51,19 +51,22 @@ if __name__ == "__main__":
     #if argv < 2:
     #    print("Please specify the .pickle file to be read: tsne_plot.py <.pickle-file>!")
 
-    _, labels = mnist.load_mnist_data(False)
+    _, labels = mnist.load_mnist_data(True)
 
-    basepath = "C:\\Users\\Tobi\\git\\bhtsne\\results\\parametertuning\\iterations\\1000\\mnist2500\\3"
-    benchmark1 = bhtsne.read_bh_tsne_result(os.path.join(basepath, "bh_tsne_result-08-07-2019_16-59-33.pickle"))
-    benchmark2 = bhtsne.read_bh_tsne_result(os.path.join(basepath, "bh_tsne_result-09-07-2019_16-15-25.pickle"))
+    basepath1 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\unoptimized sptree\\1"
+    basepath2 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\optimized sptree\\1"
+    benchmark1 = bhtsne.read_bh_tsne_result(os.path.join(basepath1, "bh_tsne_result-08-07-2019_22-27-37.pickle"))
+    benchmark2 = bhtsne.read_bh_tsne_result(os.path.join(basepath2, "bh_tsne_result-09-07-2019_17-58-55.pickle"))
 
     for key in benchmark1.keys():
+        print(str(key[0]))
         mnist_benchmark1 = np.hstack((labels[:, None], benchmark1[key]))
         mnist_benchmark2 = np.hstack((labels[:, None], benchmark2[key]))
 
         fig = compare_two_results(mnist_benchmark1[:, 1:4], mnist_benchmark1[:, 0],
                                   mnist_benchmark2[:, 1:4], mnist_benchmark2[:, 0])
-        save_figure(fig, PLOT_DIR, "-", "testcompare2", str(key[0]))
+        save_figure(fig, PLOT_DIR, "-", "testcompare3", str(key[0]))
+        plt.close(fig)
 
 # # plots
     # fig, ax = plt.subplots()

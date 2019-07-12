@@ -12,7 +12,9 @@ CWD = os.path.dirname(os.path.realpath(__file__))
 INIT = os.path.join(CWD, "initial_solutions")
 
 
-SUPPORTED_METHODS = ['random', 'gaussian', 'pca', 'mds', 'spectral']
+SUPPORTED_METHODS = ['random', 'gaussian', 'pca',
+                     'lle',
+                     'mds', 'spectral']
 DEFAULT_SEED = 42
 
 
@@ -28,6 +30,8 @@ def _embedding(_data, method='gaussian', dist='euclidean', scaling_factor=.0001,
         latent = np.random.normal(0, 1, (_data.shape[0], 2))
     elif method == 'pca':
         latent = decomposition.PCA(n_components=2, **kwargs).fit_transform(_data)
+    elif method == 'lle':
+        latent = manifold.LocallyLinearEmbedding(n_components=2, **kwargs).fit_transform(_data)
     elif method == 'mds':
         _dist = metrics.pairwise.pairwise_distances(_data, metric=dist)
         latent = manifold.MDS(n_components=2, dissimilarity='precomputed', **kwargs).fit_transform(_dist)
@@ -94,11 +98,15 @@ if __name__ == '__main__':
         pass
 
     # MNIST
-    #mnist_data, _ = mnist.load_mnist_data(all_data=True)
-    #create_initial_solutions("mnist", mnist_data)
+    # mnist_data, _ = mnist.load_mnist_data(all_data=True)
+    # create_initial_solutions("mnist", mnist_data)
 
     # MNIST2500
-    #mnist2500_data, _ = mnist.load_mnist_data(all_data=False)
-    #create_initial_solutions("mnist2500", mnist2500_data)
+    # mnist2500_data, _ = mnist.load_mnist_data(all_data=False)
+    # create_initial_solutions("mnist2500", mnist2500_data)
+
+    # FASHION_MNIST
+    fashion_data, _ = mnist.load_fashion_mnist_data()
+    create_initial_solutions("fashion_mnist", fashion_data)
 
 
