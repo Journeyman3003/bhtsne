@@ -310,11 +310,13 @@ if __name__ == "__main__":
                                           data_result_subdirectory=data_name, result_base_dir=PARAM_DICT[param][1],
                                           initial_embedding_method="gaussian")
 
+        # skip zip attachment as it simply grows too big
         # create zip archive of results
-        shutil.make_archive(RESULT_DIR, 'zip', RESULT_DIR)
+        # shutil.make_archive(RESULT_DIR, 'zip', RESULT_DIR)
 
         # send final notification
-        notification.send_mail(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH, "results.zip", RESULT_ZIP, argv)
+        # notification.send_mail(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH, "results.zip", RESULT_ZIP, argv)
+        notification.send_mail(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH, argv)
     except Exception:
         traceback.print_exc()
         notification.send_error(LOGGING_FILE_NAME, LOGGING_FILE_ABSPATH, argv)

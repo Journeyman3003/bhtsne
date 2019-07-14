@@ -12,9 +12,8 @@ CWD = os.path.dirname(os.path.realpath(__file__))
 INIT = os.path.join(CWD, "initial_solutions")
 
 
-SUPPORTED_METHODS = ['random', 'gaussian', 'pca',
-                     'lle',
-                     'mds', 'spectral']
+SUPPORTED_METHODS = ['random', 'gaussian', 'pca', 'lle']#,
+                    # 'mds', 'spectral']
 DEFAULT_SEED = 42
 
 

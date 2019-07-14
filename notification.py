@@ -55,7 +55,8 @@ def send_error(logfile_name, logfile_path, tsne_main_call):
         server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, text)
 
 
-def send_mail(logfile_name, logfile_path, result_archive_name, result_archive_path, tsne_main_call):
+# def send_mail(logfile_name, logfile_path, result_archive_name, result_archive_path, tsne_main_call):
+def send_mail(logfile_name, logfile_path, tsne_main_call):
     # instance of MIMEMultipart
     msg = MIMEMultipart()
 
@@ -85,16 +86,18 @@ def send_mail(logfile_name, logfile_path, result_archive_name, result_archive_pa
     # attach the instance 'p' to instance 'msg'
     msg.attach(p)
 
-    # attach result zip
-    # instance of MIMEBase and named as p
-    p = MIMEBase('application', 'zip')
-    # To change the payload into encoded form
-    p.set_payload((open(result_archive_path, "rb")).read())
-    # encode into base64
-    encoders.encode_base64(p)
-    p.add_header('Content-Disposition', "attachment; filename= %s" % result_archive_name)
-    # attach the instance 'p' to instance 'msg'
-    msg.attach(p)
+    # skip zip attachment as it simply grows too huge
+
+    # # attach result zip
+    # # instance of MIMEBase and named as p
+    # p = MIMEBase('application', 'zip')
+    # # To change the payload into encoded form
+    # p.set_payload((open(result_archive_path, "rb")).read())
+    # # encode into base64
+    # encoders.encode_base64(p)
+    # p.add_header('Content-Disposition', "attachment; filename= %s" % result_archive_name)
+    # # attach the instance 'p' to instance 'msg'
+    # msg.attach(p)
 
     # Converts the Multipart msg into a string
     text = msg.as_string()
@@ -105,5 +108,3 @@ def send_mail(logfile_name, logfile_path, result_archive_name, result_archive_pa
         server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, text)
 
 
-if __name__ == '__main__':
-    send_mail("","","","","")
