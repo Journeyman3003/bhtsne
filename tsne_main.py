@@ -235,7 +235,7 @@ if __name__ == "__main__":
                 except ValueError:
                     print("Please answer 'yes' ('y') or 'no' ('n').")
                     continue
-        elif argv[1] not in [MNIST, MNIST_TEST]:
+        elif argv[1] not in DATA_SETS:
             # validate passed dataset identifier
             print("data identifier has to be either of the following: {}".format(str(DATA_SETS)))
             print("Shutting down...")
