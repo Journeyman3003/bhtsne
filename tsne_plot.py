@@ -14,7 +14,8 @@ import operator
 # directory structure
 CWD = os.path.dirname(os.path.realpath(__file__))
 RESULT_DIR = os.path.join(CWD, "results")
-PLOT_DIR = os.path.join(CWD, "plots")
+TARGET = os.path.join("I:", "MasterThesis")
+PLOT_DIR = os.path.join(TARGET, "plots")
 
 
 def get_bh_tsne_grouped_result_generator(root_dir=RESULT_DIR, data_identifier='mnist'):
@@ -56,7 +57,7 @@ def load_result_and_plot_comparison(_labels, root_dir=RESULT_DIR, data_identifie
                                                                         data_identifier=data_identifier):
         print("Creating plot for data {} with parameter {}".format(data_identifier, _paramvalue))
         _result_list = [bhtsne.read_bh_tsne_result(_file) for _k, _file in _file_list]
-
+        _paramvalue = _paramvalue.replace(".", "-")
         _dir = os.path.join(PLOT_DIR, _paramvalue, data_identifier)
         try:
             os.makedirs(_dir)
