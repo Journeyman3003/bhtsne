@@ -11,8 +11,8 @@ import mnist
 CWD = os.path.dirname(os.path.realpath(__file__))
 INIT = os.path.join(CWD, "initial_solutions")
 
-
-SUPPORTED_METHODS = ['random', 'gaussian', 'pca', 'lle']#,
+# autoencoder files managed by autoencoder.py
+SUPPORTED_METHODS = ['random', 'gaussian', 'pca', 'lle', 'autoencoder']#,
                     # 'mds', 'spectral']
 DEFAULT_SEED = 42
 

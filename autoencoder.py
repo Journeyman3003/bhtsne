@@ -1,5 +1,5 @@
 from keras.layers import Input, Dense, Conv2D, MaxPooling2D, UpSampling2D, BatchNormalization, Flatten, Reshape
-from keras.models import Model
+from keras.models import Model, load_model
 from keras.callbacks import ReduceLROnPlateau
 from keras import optimizers
 import matplotlib.pyplot as plt
@@ -13,16 +13,27 @@ import mnist
 CWD = os.path.dirname(os.path.realpath(__file__))
 INIT = os.path.join(CWD, "initial_solutions")
 
+FASHION_LABELDICT = {
+    0: 'T-shirt/top',
+    1: 'Trouser',
+    2: 'Pullover',
+    3: 'Dress',
+    4: 'Coat',
+    5: 'Sandal',
+    6: 'Shirt',
+    7: 'Sneaker',
+    8: 'Bag',
+    9: 'Ankle boot'
+}
+
 
 def make_and_fit(data, train_test_split_threshold=60000):
-
-    data = mnist.mnist_1d_to_2d(data)
 
     x_train = data[:train_test_split_threshold, :]
     x_test = data[train_test_split_threshold:, :]
 
-    x_train = np.reshape(x_train, (-1, 28, 28, 1)) / 255.0
-    x_test = np.reshape(x_test, (-1, 28, 28, 1)) / 255.0
+    x_train = np.reshape(x_train, (-1, 28, 28, 1))
+    x_test = np.reshape(x_test, (-1, 28, 28, 1))
 
     inputs = Input(shape=(28, 28, 1))
 
@@ -90,19 +101,23 @@ def make_and_fit(data, train_test_split_threshold=60000):
     return model, encoder, decoder
 
 
-def plot_autoencoder_results(original, predicted, filename="autoencoder-2dim-fashion_mnist.png"):
-    for i in range(10):
-        # display original images
-        ax = plt.subplot(2, 10, i + 1)
-        plt.imshow(original[i].reshape(28, 28))
-        plt.gray()
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
+def get_triple(inputs):
+    latent_repr = encoder.predict(inputs)
+    outputs = decoder.predict(latent_repr)
+    latent_repr = latent_repr.reshape((latent_repr.shape[0], latent_repr.shape[1], 1))
 
-        # display reconstructed images
-        ax = plt.subplot(2, 10, 10 + i + 1)
-        plt.imshow(predicted[i].reshape(28, 28))
-        plt.gray()
+    return inputs, latent_repr, outputs
+
+
+def show_encodings(inputs, latent_repr, outputs, filename="autoencoder-2dim-fashion_mnist.png"):
+    n = len(inputs)
+    fig, axes = plt.subplots(2, n, figsize=(2 * n, 5))
+    for i in range(n):
+        axes[0, i].set_title(str(i))
+        axes[1, i].set_title('({0:.2f}, {1:.2f})'.format(float(latent_repr[i, 0]), float(latent_repr[i, 1])))
+        axes[0, i].imshow(inputs[i].reshape(28, 28), cmap='gray')
+        axes[1, i].imshow(outputs[i].reshape(28, 28), cmap='gray')
+    for ax in axes.flatten():
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
 
@@ -113,21 +128,38 @@ def plot_autoencoder_results(original, predicted, filename="autoencoder-2dim-fas
 
 if __name__ == '__main__':
 
-    data_name = "fashion_mnist"
-    data, _ = mnist.load_fashion_mnist_data()
+    #data_name = "fashion_mnist"
+    data_name = "mnist"
+    #data, labels = mnist.load_fashion_mnist_data()
+    data, labels = mnist.load_mnist_data(True)
+
+    data = mnist.mnist_1d_to_2d(data)
 
     model, encoder, decoder = make_and_fit(data)
+    #
+    model.save("autoencoder.h5")
+    encoder.save("encoder.h5")
+    decoder.save("decoder.h5")
 
-    encoded_imgs = encoder.predict(data)
-    predicted_imgs = model.predict(data)
+    autoencoder = load_model("autoencoder.h5")
+    encoder = load_model("encoder.h5")
+    decoder = load_model("decoder.h5")
+
+    # data = np.reshape(data, (-1, 28, 28, 1)) / 255.0
+    data = np.reshape(data, (-1, 28, 28, 1))
+
+    inputs, latent_embedding, outputs = get_triple(data)
+
+    indexes = list(map(lambda x: np.argmax(labels == x), np.arange(10)))
+
+    #show_encodings(inputs[indexes], latent_embedding[indexes], outputs[indexes])
+    show_encodings(inputs[indexes], latent_embedding[indexes], outputs[indexes], filename="autoencoder-2dim-mnist.png")
 
     filename = "initial_solution_" + data_name + "_autoencoder.pickle"
 
     file_abspath = os.path.join(INIT, filename)
 
     with open(file_abspath, 'wb') as pickle_file:
-        pickle.dump(encoded_imgs, pickle_file)
-
-    plot_autoencoder_results(data, predicted_imgs)
+        pickle.dump(latent_embedding, pickle_file)
 
 
