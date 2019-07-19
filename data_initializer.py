@@ -43,10 +43,19 @@ def _embedding(_data, method='gaussian', dist='euclidean', scaling_factor=.0001,
     return latent * scaling_factor
 
 
+def get_supported_methods():
+    return SUPPORTED_METHODS
+
+
+def get_supported_non_random_methods():
+    return list(filter(lambda x: x not in ["random", "gaussian"], SUPPORTED_METHODS))
+
+
 def get_initial_embedding(data_name, method_name, i=1):
 
-    filename = "initial_solution_" + data_name + "_" + method_name  \
-               + "_" + str(i) + ".pickle" if method_name in ['random', 'gaussian'] else ".pickle"
+    filename = "initial_solution_" + data_name + "_" + method_name \
+               + "{}" + ".pickle"
+    filename = filename.format("_" + str(i) if method_name in ['random', 'gaussian'] else "")
 
     # format to abspath
     file_abspath = os.path.join(INIT, filename)

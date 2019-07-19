@@ -11,8 +11,9 @@ import mnist
 import notification
 import logging
 from streamlogger import StreamToLogger
-from data_initializer import get_initial_embedding
+from data_initializer import get_initial_embedding, get_supported_methods, get_supported_non_random_methods
 import sys
+from argparse import ArgumentParser
 import shutil
 
 # directory structure
@@ -26,21 +27,20 @@ MNIST = "mnist"
 FASHION_MNIST = "fashion_mnist"
 
 DATA_SETS = [MNIST_TEST, MNIST, FASHION_MNIST]
-# ...
 
 # Parameter tuning
 PARAMTUNING_DIR = os.path.join(RESULT_DIR, "parametertuning")
 
-TMAX_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "iterations")
-PERPLEXITY_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "perplexity")
-EXAGGERATION_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "exaggeration")
-THETA_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "theta")
-LEARNING_RATE_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "learningrate")
-MOMENTUM_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "momentum")
-FINAL_MOMENTUM_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "finalmomentum")
-STOP_LYING_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "stoplying")
-RESTART_LYING_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "restartlying")
-MOMENTUM_SWITCH_TUNING_DIR = os.path.join(PARAMTUNING_DIR, "momentumswitch")
+TMAX_TUNING_DIR = "iterations"
+PERPLEXITY_TUNING_DIR = "perplexity"
+EXAGGERATION_TUNING_DIR = "exaggeration"
+THETA_TUNING_DIR = "theta"
+LEARNING_RATE_TUNING_DIR = "learningrate"
+MOMENTUM_TUNING_DIR = "momentum"
+FINAL_MOMENTUM_TUNING_DIR = "finalmomentum"
+STOP_LYING_TUNING_DIR = "stoplying"
+RESTART_LYING_TUNING_DIR = "restartlying"
+MOMENTUM_SWITCH_TUNING_DIR = "momentumswitch"
 
 # Initial solutions
 INIT = os.path.join(CWD, "initial_solutions")
@@ -48,6 +48,16 @@ INIT = os.path.join(CWD, "initial_solutions")
 # Building block experiments
 BUILDINGBLOCK_DIR = os.path.join(RESULT_DIR, "buildingblocks")
 
+INITIAL_EMBEDDING_DIR = os.path.join(BUILDINGBLOCK_DIR, "initial_embeddings")
+# not needed
+INITIAL_PCA_DIR = os.path.join(INITIAL_EMBEDDING_DIR, "pca")
+INITIAL_LLE_DIR = os.path.join(INITIAL_EMBEDDING_DIR, "lle")
+
+
+HIGH_DIM_DISTRIBUTION_DIR = os.path.join(BUILDINGBLOCK_DIR, "high_dimensional_distribution")
+LOW_DIM_DISTRIBUTION_DIR = os.path.join(BUILDINGBLOCK_DIR, "low_dimensional_distribution")
+COST_DIR = os.path.join(BUILDINGBLOCK_DIR, "cost_function")
+OPIMIZATION_DIR = os.path.join(BUILDINGBLOCK_DIR, "optimization_strategy")
 
 LOGGING_DIR = os.path.join(CWD, "logging")
 DAY = datetime.now().strftime("%d-%m-%Y")
@@ -150,8 +160,24 @@ def load_data(data_identifier):
         quit()
 
 
-def tsne_parametertuning_workflow(parameter_name, value_list, data, result_base_dir, data_result_subdirectory,
-                                  initial_embedding_method=None):
+def _argparse():
+    argparse = ArgumentParser('Script to run parametertuning and building block analysis of bh_tsne')
+    argparse.add_argument('-d', '--data_set', choices=DATA_SETS, default=MNIST_TEST,
+                          help="use one of the following available data identifiers: {}".format(str(DATA_SETS)))
+    available_parameters = ["all"]
+    available_parameters.extend(PARAM_DICT.keys())
+    argparse.add_argument('-p', '--parameter_list', choices=available_parameters, nargs='+', default=["max_iter"],
+                          help="use all or selected parameter identifiers from the following list: {}"
+                          .format(str(PARAM_DICT.keys())))
+    argparse.add_argument('-i', '--initial_embedding', choices=["gaussian", "pca", "lle"], default="gaussian")
+    argparse.add_argument('-pt', '--parametertuning', action='store_true', default=False)
+    argparse.add_argument('-y', '--y_init', action='store_true', default=True)
+
+    return argparse
+
+
+def tsne_workflow(parameter_name, value_list, data, result_base_dir, data_result_subdirectory,
+                  initial_embedding_method=None):
     """
 
     :param parameter_name:
@@ -172,8 +198,11 @@ def tsne_parametertuning_workflow(parameter_name, value_list, data, result_base_
         print("Using Dataset: {}".format(data_result_subdirectory))
 
         print("Tuning parameter: " + parameter_name + ", value: " + str(value))
-        # 5 times to validate
-        for i in range(1, 6):
+        # 5 times to validate for random methods, once for specified inputs
+
+        max_round = 2 if initial_embedding_method in ['pca', 'lle'] else 6
+
+        for i in range(1, max_round):
             print("###", "### Round:" + str(i), "###")
             # create directory if non-existent
             result_dir = os.path.join(result_base_dir, str(value), data_result_subdirectory, str(i))
@@ -184,19 +213,20 @@ def tsne_parametertuning_workflow(parameter_name, value_list, data, result_base_
                 pass
 
             # load the initial embedding if specified
-            initial_embedding = None
+            _initial_embedding = None
             if initial_embedding_method is not None:
-                initial_embedding = get_initial_embedding(data_name=data_result_subdirectory,
-                                                          method_name=initial_embedding_method, i=i)
+                _initial_embedding = get_initial_embedding(data_name=data_result_subdirectory,
+                                                           method_name=initial_embedding_method, i=i)
                 filename = "initial_solution_" + data_result_subdirectory + "_" + initial_embedding_method  \
-                           + "_" + str(i) + ".pickle" if initial_embedding_method in ['random', 'gaussian'] \
-                           else ".pickle"
+                           + "{}" + ".pickle"
+                filename = filename.format("_" + str(i) if initial_embedding_method in ['random', 'gaussian'] else "")
+
                 print("Using initial embedding file: {}".format(filename))
 
             # run t-SNE
             # perform PCA to 50 dims beforehand
             # use initial embedding
-            bh_tsne_dict = bhtsne.run_bh_tsne(data, verbose=True, initial_solution=initial_embedding,
+            bh_tsne_dict = bhtsne.run_bh_tsne(data, verbose=True, initial_solution=_initial_embedding,
                                               **{parameter_name: value})
 
             # save results
@@ -211,23 +241,15 @@ if __name__ == "__main__":
     from distutils.util import strtobool
     import traceback
     try:
-        # for default debug operation
-        data_name = MNIST_TEST
-        param_list = ["max_iter"]
+        parser = _argparse()
 
-        # for parallelism
-        # num_processes = 1
-
-        if len(argv) < 2:
-            print("Error: did not call script passing correct data and parameter identifier!\n"
-                  "Run script as follows: python3 tsne_main.py <data_identifier> [optional] <parameters>\n"
-                  "available data identifiers: {}".format(str(DATA_SETS)),
-                  "available [optional] parameter identifiers: {}".format(str(PARAM_DICT.keys())))
+        if len(argv) <= 1:
+            print(parser.print_help())
             while True:
                 try:
-                    debug = strtobool(input("Do you want to use the mnist2500 for debugging purposes? [y/n] "))
+                    debug = strtobool(input("Do you want to run in debug mode? [y/n] "))
                     if debug:
-                        print("Running in debug mode with mnist2500")
+                        print("Running in debug mode: tsne_main.py mnist2500 max_iter")
                         break
                     else:
                         print("Shutting down...")
@@ -235,43 +257,20 @@ if __name__ == "__main__":
                 except ValueError:
                     print("Please answer 'yes' ('y') or 'no' ('n').")
                     continue
-        elif argv[1] not in DATA_SETS:
-            # validate passed dataset identifier
-            print("data identifier has to be either of the following: {}".format(str(DATA_SETS)))
-            print("Shutting down...")
-            quit()
-        elif len(argv) < 3:
-            # all parameters
-            while True:
-                try:
-                    all_param = strtobool(input("No parameter identifier specified."
-                                                "Do you want to use all parameters [y] or just maximum iterations [n]?"))
-                    if all_param:
-                        print("Using all parameters:\n {}".format(str(PARAM_DICT.keys())))
-                        break
-                    else:
-                        print("Using maximum iterations")
-                        break
-                except ValueError:
-                    print("Please answer 'yes' ('y') or 'no' ('n').")
-                    continue
-        elif argv[2] == "all":
-            # all parameters from dict
-            print("Using all parameters")
-            data_name = argv[1]
-            param_list = PARAM_DICT.keys()
-        else:
-            # selected parameters
-            for param in argv[2:]:
-                if param not in PARAM_DICT.keys():
-                    print("unrecognized parameter identifier: {}".format(param))
-                    print("Shutting down...")
-                    quit()
-            # all checks passed, set values
-            data_name = argv[1]
-            param_list = argv[2:]
 
-            # num_processes = 4 if len(param_list) >= 4 else len(param_list)
+        argp = parser.parse_args(argv[1:])
+
+        print("Using data set: {}".format(argp.data_set))
+        data_name = argp.data_set
+        print("Using parameters: {}".format(argp.parameter_list))
+        param_list = PARAM_DICT.keys() if "all" in argp.parameter_list else argp.parameter_list
+        if argp.y_init:
+            print("Running y_init buildingblock test with initial embeddings: {}"
+                  .format(get_supported_non_random_methods()))
+        else:
+            print("Using initial embeddings: {}".format(argp.initial_embedding))
+        initial_embedding = argp.initial_embedding
+        print("Using base directory: {}".format(str(PARAMTUNING_DIR) if argp.parametertuning else BUILDINGBLOCK_DIR))
 
         # initialize directories
         init_directories()
@@ -304,11 +303,27 @@ if __name__ == "__main__":
         ###########################################################
 
         # For each Data set and parameter, perform tsne 5 times to have some reliable data
+        if argp.parametertuning:
+            for param in param_list:
+                tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
+                              data_result_subdirectory=data_name,
+                              result_base_dir=os.path.join(PARAMTUNING_DIR, PARAM_DICT[param][1]),
+                              initial_embedding_method=initial_embedding)
 
-        for param in param_list:
-            tsne_parametertuning_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
-                                          data_result_subdirectory=data_name, result_base_dir=PARAM_DICT[param][1],
-                                          initial_embedding_method="gaussian")
+        ###########################################################
+        #                RUN BUILDINGBLOCK ANALYSIS               #
+        ###########################################################
+
+        ###########################################################
+        #                    INITIAL EMBEDDINGS                   #
+        ###########################################################
+        elif argp.y_init:
+            for param in param_list:
+                for method in get_supported_non_random_methods():
+                    tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
+                                  data_result_subdirectory=data_name,
+                                  result_base_dir=os.path.join(INITIAL_EMBEDDING_DIR, method, PARAM_DICT[param][1]),
+                                  initial_embedding_method=method)
 
         # skip zip attachment as it simply grows too big
         # create zip archive of results
