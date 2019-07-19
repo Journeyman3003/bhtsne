@@ -21,8 +21,8 @@ def make_and_fit(data, train_test_split_threshold=60000):
     x_train = data[:train_test_split_threshold, :]
     x_test = data[train_test_split_threshold:, :]
 
-    x_train = np.reshape(x_train, (len(x_train), 28, 28, 1))
-    x_test = np.reshape(x_test, (len(x_test), 28, 28, 1))
+    x_train = np.reshape(x_train, (-1, 28, 28, 1)) / 255.0
+    x_test = np.reshape(x_test, (-1, 28, 28, 1)) / 255.0
 
     inputs = Input(shape=(28, 28, 1))
 
