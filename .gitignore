@@ -13,8 +13,8 @@ windows
 *.txt
 *.tsv
 *.zip
+*.gz
 *.csv
-MNIST
 
 # ignore plots
 plots
