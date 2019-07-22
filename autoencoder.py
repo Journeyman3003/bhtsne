@@ -128,38 +128,54 @@ def show_encodings(inputs, latent_repr, outputs, filename="autoencoder-2dim-fash
 
 if __name__ == '__main__':
 
-    #data_name = "fashion_mnist"
-    data_name = "mnist"
-    #data, labels = mnist.load_fashion_mnist_data()
-    data, labels = mnist.load_mnist_data(True)
-
-    data = mnist.mnist_1d_to_2d(data)
-
-    #model, encoder, decoder = make_and_fit(data)
+    data_name = "fashion_mnist"
+    #data_name = "mnist"
+    data, labels = mnist.load_fashion_mnist_data()
+    # #data, labels = mnist.load_mnist_data(True)
     #
-    #model.save("autoencoder.h5")
-    #encoder.save("encoder.h5")
-    #decoder.save("decoder.h5")
-
-    autoencoder = load_model("autoencoder.h5")
-    encoder = load_model("encoder.h5")
-    decoder = load_model("decoder.h5")
-
+    # # data = mnist.mnist_1d_to_2d(data)
+    # #
+    # # #model, encoder, decoder = make_and_fit(data)
+    # # #
+    # # #model.save("autoencoder.h5")
+    # # #encoder.save("encoder.h5")
+    # # #decoder.save("decoder.h5")
+    # #
+    # autoencoder = load_model(os.path.join("autoencoders", "fashion_mnist", "autoencoder.h5"))
+    # encoder = load_model(os.path.join("autoencoders", "fashion_mnist","encoder.h5"))
+    # decoder = load_model(os.path.join("autoencoders", "fashion_mnist","decoder.h5"))
+    # #
     # data = np.reshape(data, (-1, 28, 28, 1)) / 255.0
-    data = np.reshape(data, (-1, 28, 28, 1))
-
-    inputs, latent_embedding, outputs = get_triple(data)
-
-    #indexes = list(map(lambda x: np.argmax(labels == x), np.arange(10)))
-
-    #show_encodings(inputs[indexes], latent_embedding[indexes], outputs[indexes])
-    #show_encodings(inputs[indexes], latent_embedding[indexes], outputs[indexes], filename="autoencoder-2dim-mnist.png")
-
+    # # data = np.reshape(data, (-1, 28, 28, 1))
+    # #
+    # inputs, latent_embedding, outputs = get_triple(data)
+    # #
+    # indexes = list(map(lambda x: np.argmax(labels == x), np.arange(10)))
+    # #
+    # show_encodings(inputs[indexes], latent_embedding[indexes], outputs[indexes])
+    # # #show_encodings(inputs[indexes], latent_embedding[indexes], outputs[indexes], filename="autoencoder-2dim-mnist.png")
+    # #
     filename = "initial_solution_" + data_name + "_autoencoder.pickle"
-
+    # #
     file_abspath = os.path.join(INIT, filename)
+    #
+    #latent_embedding = np.reshape(latent_embedding, (-1, 2))
+    #
+    # #
+    # with open(file_abspath, 'wb') as pickle_file:
+    #    pickle.dump(latent_embedding, pickle_file)
 
-    with open(file_abspath, 'wb') as pickle_file:
-        pickle.dump(latent_embedding, pickle_file)
+    with open(file_abspath, 'rb') as pickle_file:
+        latent_embedding = pickle.load(pickle_file)
+
+    from matplotlib import pyplot as plt
+    import seaborn as sns
+    sns.scatterplot(x=latent_embedding[:, 0],
+                    y=latent_embedding[:, 1],
+                    hue=labels,
+                    legend="full",
+                    palette=sns.color_palette("bright"))
+
+    plt.show()
 
 
