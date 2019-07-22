@@ -200,7 +200,7 @@ def tsne_workflow(parameter_name, value_list, data, result_base_dir, data_result
         print("Tuning parameter: " + parameter_name + ", value: " + str(value))
         # 5 times to validate for random methods, once for specified inputs
 
-        max_round = 2 if initial_embedding_method in ['pca', 'lle'] else 6
+        max_round = 6 if initial_embedding_method in ['gaussian', 'random'] else 2
 
         for i in range(1, max_round):
             print("###", "### Round:" + str(i), "###")
