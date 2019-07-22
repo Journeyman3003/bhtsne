@@ -77,6 +77,26 @@ DEFAULT_RESTART_LYING_ITERATION = 1001
 DEFAULT_MOMENTUM_SWITCH_ITERATION = 250
 DEFAULT_EXAGGERATION_FACTOR = 12
 
+# Additional building block hyperparameters
+DEFAULT_BUILDING_BLOCK_INDEX = 1
+BUILDING_BLOCK_DICT = {
+    "input_similarities": {
+        "gaussian": 0,
+        "laplacian": 1,
+        "student": 2
+    },
+    "output_similarities":  {
+        "student": 0,
+        "laplacian": 1
+    },
+    "cost_function": {
+        "KL": 0
+    },
+    "optimization": {
+        "gradient_descent": 0
+    }
+}
+
 
 def _argparse():
     argparse = ArgumentParser('bh_tsne Python wrapper')
@@ -130,7 +150,9 @@ def init_bh_tsne(samples, workdir, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL
                  final_momentum=DEFAULT_FINAL_MOMENTUM, theta=DEFAULT_THETA, randseed=EMPTY_SEED,
                  use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS, stop_lying_iter=DEFAULT_STOP_LYING_ITERATION,
                  restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
-                 momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=DEFAULT_EXAGGERATION_FACTOR):
+                 momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=DEFAULT_EXAGGERATION_FACTOR,
+                 input_similarities=DEFAULT_BUILDING_BLOCK_INDEX, output_similarities=DEFAULT_BUILDING_BLOCK_INDEX,
+                 cost_function=DEFAULT_BUILDING_BLOCK_INDEX, optimization=DEFAULT_BUILDING_BLOCK_INDEX):
 
     # apply PCA if desired
     if use_pca:
@@ -153,6 +175,8 @@ def init_bh_tsne(samples, workdir, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL
                              # 6 ints
                              no_dims, max_iter, stop_lying_iter, restart_lying_iter, momentum_switch_iter,
                              lying_factor))
+        # Write the building block instructions
+        data_file.write(pack('iiii', input_similarities, output_similarities, cost_function, optimization))
         # Then write the data
         for sample in samples:
             data_file.write(pack('{}d'.format(len(sample)), *sample))
@@ -229,7 +253,9 @@ def run_bh_tsne(data, no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, th
                 initial_dims=INITIAL_DIMENSIONS, use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS,
                 stop_lying_iter=DEFAULT_STOP_LYING_ITERATION, restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
                 momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=DEFAULT_EXAGGERATION_FACTOR,
-                randseed=-1, initial_solution=None, verbose=False):
+                randseed=-1, initial_solution=None, verbose=False, input_similarities=DEFAULT_BUILDING_BLOCK_INDEX,
+                output_similarities=DEFAULT_BUILDING_BLOCK_INDEX, cost_function=DEFAULT_BUILDING_BLOCK_INDEX,
+                optimization=DEFAULT_BUILDING_BLOCK_INDEX):
     """
     Run TSNE based on the Barnes-HT algorithm
 
@@ -259,7 +285,9 @@ def run_bh_tsne(data, no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, th
                      perplexity=perplexity, learning_rate=learning_rate, momentum=momentum,
                      final_momentum=final_momentum, theta=theta, use_pca=use_pca, max_iter=max_iter,
                      stop_lying_iter=stop_lying_iter, restart_lying_iter=restart_lying_iter,
-                     momentum_switch_iter=momentum_switch_iter, lying_factor=lying_factor, randseed=randseed)
+                     momentum_switch_iter=momentum_switch_iter, lying_factor=lying_factor, randseed=randseed,
+                     input_similarities=input_similarities, output_similarities=output_similarities,
+                     cost_function=cost_function, optimization=optimization)
 
     else:
         # for linux: do all the linux stuff in child process
@@ -273,7 +301,9 @@ def run_bh_tsne(data, no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, th
                          initial_solution=initial_solution, perplexity=perplexity, learning_rate=learning_rate,
                          momentum=momentum, final_momentum=final_momentum, theta=theta, use_pca=use_pca,
                          max_iter=max_iter, stop_lying_iter=stop_lying_iter, restart_lying_iter=restart_lying_iter,
-                         momentum_switch_iter=momentum_switch_iter, lying_factor=lying_factor, randseed=randseed)
+                         momentum_switch_iter=momentum_switch_iter, lying_factor=lying_factor, randseed=randseed,
+                         input_similarities=input_similarities, output_similarities=output_similarities,
+                         cost_function=cost_function, optimization=optimization)
             os._exit(0)
         else:
             try:

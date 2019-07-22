@@ -11,7 +11,7 @@ import mnist
 import notification
 import logging
 from streamlogger import StreamToLogger
-from data_initializer import get_initial_embedding, get_supported_methods, get_supported_non_random_methods
+from data_initializer import get_initial_embedding, get_supported_non_random_methods
 import sys
 from argparse import ArgumentParser
 import shutil
@@ -52,7 +52,6 @@ INITIAL_EMBEDDING_DIR = os.path.join(BUILDINGBLOCK_DIR, "initial_embeddings")
 # not needed
 INITIAL_PCA_DIR = os.path.join(INITIAL_EMBEDDING_DIR, "pca")
 INITIAL_LLE_DIR = os.path.join(INITIAL_EMBEDDING_DIR, "lle")
-
 
 HIGH_DIM_DISTRIBUTION_DIR = os.path.join(BUILDINGBLOCK_DIR, "high_dimensional_distribution")
 LOW_DIM_DISTRIBUTION_DIR = os.path.join(BUILDINGBLOCK_DIR, "low_dimensional_distribution")
@@ -171,7 +170,15 @@ def _argparse():
                           .format(str(PARAM_DICT.keys())))
     argparse.add_argument('-i', '--initial_embedding', choices=["gaussian", "pca", "lle"], default="gaussian")
     argparse.add_argument('-pt', '--parametertuning', action='store_true', default=False)
-    argparse.add_argument('-y', '--y_init', action='store_true', default=True)
+    argparse.add_argument('-y', '--y_init', action='store_true', default=False)
+    argparse.add_argument('-insim', '--input_similarities', default="gaussian",
+                          choices=bhtsne.BUILDING_BLOCK_DICT["input_similarities"].keys())
+    argparse.add_argument('-outsim', '--output_similarities', default="student",
+                          choices=bhtsne.BUILDING_BLOCK_DICT["output_similarities"].keys())
+    argparse.add_argument('-cf', '--cost_function', default="KL",
+                          choices=bhtsne.BUILDING_BLOCK_DICT["cost_function"].keys())
+    argparse.add_argument('-opt', '--optimization', default="gradient_descent",
+                          choices=bhtsne.BUILDING_BLOCK_DICT["optimization"].keys())
 
     return argparse
 
@@ -264,7 +271,7 @@ if __name__ == "__main__":
         data_name = argp.data_set
         print("Using parameters: {}".format(argp.parameter_list))
         param_list = PARAM_DICT.keys() if "all" in argp.parameter_list else argp.parameter_list
-        if argp.y_init:
+        if not argp.parametertuning and argp.y_init:
             print("Running y_init buildingblock test with initial embeddings: {}"
                   .format(get_supported_non_random_methods()))
         else:
@@ -311,10 +318,6 @@ if __name__ == "__main__":
                               initial_embedding_method=initial_embedding)
 
         ###########################################################
-        #                RUN BUILDINGBLOCK ANALYSIS               #
-        ###########################################################
-
-        ###########################################################
         #                    INITIAL EMBEDDINGS                   #
         ###########################################################
         elif argp.y_init:
@@ -324,6 +327,16 @@ if __name__ == "__main__":
                                   data_result_subdirectory=data_name,
                                   result_base_dir=os.path.join(INITIAL_EMBEDDING_DIR, method, PARAM_DICT[param][1]),
                                   initial_embedding_method=method)
+
+        ###########################################################
+        #                RUN BUILDINGBLOCK ANALYSIS               #
+        ###########################################################
+        else:
+            for param in param_list:
+                tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
+                              data_result_subdirectory=data_name,
+                              result_base_dir=os.path.join(PARAMTUNING_DIR, PARAM_DICT[param][1]),
+                              initial_embedding_method=initial_embedding)
 
         # skip zip attachment as it simply grows too big
         # create zip archive of results

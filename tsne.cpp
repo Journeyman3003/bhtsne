@@ -47,8 +47,9 @@ using namespace std;
 static double sign(double x) { return (x == .0 ? .0 : (x < .0 ? -1.0 : 1.0)); }
 
 static void zeroMean(double* X, int N, int D);
-static void computeGaussianPerplexity(double* X, int N, int D, double* P, double perplexity);
-static void computeGaussianPerplexity(double* X, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, double perplexity, int K);
+static void computeGaussianInputSimilarity(double* X, int N, int D, double* P, double perplexity);
+static void computeGaussianInputSimilarity(double* X, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, double perplexity, int K);
+static void computeLaplacianInputSimilarity(double* X, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, double perplexity, int K);
 static double randn();
 static void computeExactGradient(double* P, double* Y, int N, int D, double* dC);
 static void computeGradient(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
@@ -60,7 +61,8 @@ static void symmetrizeMatrix(unsigned int** row_P, unsigned int** col_P, double*
 // Perform t-SNE
 void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks, int no_dims, double perplexity, double eta,
 			   double momentum, double final_momentum, double theta, int rand_seed, bool skip_random_init, int max_iter, 
-			   int lying_factor, int stop_lying_iter, int start_lying_iter, int mom_switch_iter) {
+			   int lying_factor, int stop_lying_iter, int start_lying_iter, int mom_switch_iter, int input_similarities, 
+			   int output_similarities, int cost_function, int optimization) {
 
     // Set random seed
     if (skip_random_init != true) {
@@ -110,7 +112,7 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
         printf("Exact?");
         P = (double*) malloc(N * N * sizeof(double));
         if(P == NULL) { printf("Memory allocation failed!\n"); exit(1); }
-        computeGaussianPerplexity(X, N, D, P, perplexity);
+		computeGaussianInputSimilarity(X, N, D, P, perplexity);
 
         // Symmetrize input similarities
         printf("Symmetrizing...\n");
@@ -131,9 +133,14 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 
     // Compute input similarities for approximate t-SNE
     else {
-
-        // Compute asymmetric pairwise input similarities
-        computeGaussianPerplexity(X, N, D, &row_P, &col_P, &val_P, perplexity, (int) (3 * perplexity));
+		// Compute asymmetric pairwise input similarities
+		switch (input_similarities) {
+			case 1: 
+				computeLaplacianInputSimilarity(X, N, D, &row_P, &col_P, &val_P, perplexity, (int)(3 * perplexity));
+				break;
+			default: 
+				computeGaussianInputSimilarity(X, N, D, &row_P, &col_P, &val_P, perplexity, (int)(3 * perplexity));
+		}
 
         // Symmetrize input similarities
         symmetrizeMatrix(&row_P, &col_P, &val_P, N);
@@ -231,6 +238,8 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
     }
     printf("Fitting performed in %4.2f seconds.\n", total_time);
 }
+
+
 
 
 // Compute gradient of the t-SNE cost function (using Barnes-Hut algorithm)
@@ -390,8 +399,8 @@ static double evaluateError(unsigned int* row_P, unsigned int* col_P, double* va
 }
 
 
-// Compute input similarities with a fixed perplexity
-static void computeGaussianPerplexity(double* X, int N, int D, double* P, double perplexity) {
+// Compute gaussian input similarities with a fixed perplexity
+static void computeGaussianInputSimilarity(double* X, int N, int D, double* P, double perplexity) {
 
 	// Compute the squared Euclidean distance matrix
 	double* DD = (double*) malloc(N * N * sizeof(double));
@@ -461,8 +470,8 @@ static void computeGaussianPerplexity(double* X, int N, int D, double* P, double
 }
 
 
-// Compute input similarities with a fixed perplexity using ball trees (this function allocates memory another function should free)
-static void computeGaussianPerplexity(double* X, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, double perplexity, int K) {
+// Compute gaussian input similarities with a fixed perplexity using ball trees (this function allocates memory another function should free)
+static void computeGaussianInputSimilarity(double* X, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, double perplexity, int K) {
 
     if(perplexity > K) printf("Perplexity should be lower than K!\n");
 
@@ -484,7 +493,7 @@ static void computeGaussianPerplexity(double* X, int N, int D, unsigned int** _r
     vector<DataPoint> obj_X(N, DataPoint(D, -1, X));
     for(int n = 0; n < N; n++) obj_X[n] = DataPoint(D, n, X + n * D);
     tree->create(obj_X);
-
+	printf("GAUSSIAN...\n");
     // Loop over all points to find nearest neighbors
     printf("Building tree...\n");
     vector<DataPoint> indices;
@@ -559,6 +568,104 @@ static void computeGaussianPerplexity(double* X, int N, int D, unsigned int** _r
     delete tree;
 }
 
+// Compute laplacian input similarities with a fixed perplexity using ball trees (this function allocates memory another function should free)
+static void computeLaplacianInputSimilarity(double* X, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, double perplexity, int K) {
+
+	if (perplexity > K) printf("Perplexity should be lower than K!\n");
+
+	// Allocate the memory we need
+	*_row_P = (unsigned int*)malloc((N + 1) * sizeof(unsigned int));
+	*_col_P = (unsigned int*)calloc(N * K, sizeof(unsigned int));
+	*_val_P = (double*)calloc(N * K, sizeof(double));
+	if (*_row_P == NULL || *_col_P == NULL || *_val_P == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	unsigned int* row_P = *_row_P;
+	unsigned int* col_P = *_col_P;
+	double* val_P = *_val_P;
+	double* cur_P = (double*)malloc((N - 1) * sizeof(double));
+	if (cur_P == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	row_P[0] = 0;
+	for (int n = 0; n < N; n++) row_P[n + 1] = row_P[n] + (unsigned int)K;
+
+	// Build ball tree on data set
+	VpTree<DataPoint, euclidean_distance>* tree = new VpTree<DataPoint, euclidean_distance>();
+	vector<DataPoint> obj_X(N, DataPoint(D, -1, X));
+	for (int n = 0; n < N; n++) obj_X[n] = DataPoint(D, n, X + n * D);
+	tree->create(obj_X);
+
+	// Loop over all points to find nearest neighbors
+	printf("Building tree...\n");
+	printf("LAPLACIAN...\n");
+	vector<DataPoint> indices;
+	vector<double> distances;
+	for (int n = 0; n < N; n++) {
+
+		if (n % 10000 == 0) printf(" - point %d of %d\n", n, N);
+
+		// Find nearest neighbors
+		indices.clear();
+		distances.clear();
+		tree->search(obj_X[n], K + 1, &indices, &distances);
+
+		// Initialize some variables for binary search
+		bool found = false;
+		double beta = 1.0;
+		double min_beta = -DBL_MAX;
+		double max_beta = DBL_MAX;
+		double tol = 1e-5;
+
+		// Iterate until we found a good perplexity
+		int iter = 0; double sum_P;
+		while (!found && iter < 200) {
+
+			// Compute Laplacian kernel row
+			for (int m = 0; m < K; m++) cur_P[m] = exp(-beta * distances[m + 1]);
+
+			// Compute entropy of current row
+			sum_P = DBL_MIN;
+			for (int m = 0; m < K; m++) sum_P += cur_P[m];
+			double H = .0;
+			for (int m = 0; m < K; m++) H += beta * (distances[m + 1] * cur_P[m]);
+			H = (H / sum_P) + log(sum_P);
+
+			// Evaluate whether the entropy is within the tolerance level
+			double Hdiff = H - log(perplexity);
+			if (Hdiff < tol && -Hdiff < tol) {
+				found = true;
+			}
+			else {
+				if (Hdiff > 0) {
+					min_beta = beta;
+					if (max_beta == DBL_MAX || max_beta == -DBL_MAX)
+						beta *= 2.0;
+					else
+						beta = (beta + max_beta) / 2.0;
+				}
+				else {
+					max_beta = beta;
+					if (min_beta == -DBL_MAX || min_beta == DBL_MAX)
+						beta /= 2.0;
+					else
+						beta = (beta + min_beta) / 2.0;
+				}
+			}
+
+			// Update iteration counter
+			iter++;
+		}
+
+		// Row-normalize current row of P and store in matrix
+		for (unsigned int m = 0; m < K; m++) cur_P[m] /= sum_P;
+		for (unsigned int m = 0; m < K; m++) {
+			col_P[row_P[n] + m] = (unsigned int)indices[m + 1].index();
+			val_P[row_P[n] + m] = cur_P[m];
+		}
+	}
+
+	// Clean up memory
+	obj_X.clear();
+	free(cur_P);
+	delete tree;
+}
 
 // Symmetrizes a sparse matrix
 static void symmetrizeMatrix(unsigned int** _row_P, unsigned int** _col_P, double** _val_P, int N) {
@@ -713,13 +820,16 @@ static double randn() {
 // Function that loads data from a t-SNE file
 // Note: this function does a malloc that should be freed elsewhere
 bool TSNE::load_data(double** data, int* n, int* d, double** initial_solution, int* no_dims, double* theta, double* perplexity, double* eta, double* momentum, double* final_momentum,
-	int* rand_seed, int* max_iter, int* stop_lying_iter, int* restart_lying_iter, int* momentum_switch_iter, int* lying_factor, bool* skip_random_init) {
+					 int* rand_seed, int* max_iter, int* stop_lying_iter, int* restart_lying_iter, int* momentum_switch_iter, int* lying_factor, bool* skip_random_init,
+					 int* input_similarities, int* output_similarities, int* cost_function, int* optimization) {
 	// Open file, read first 2 integers, allocate memory, and read the data
     FILE *h;
 	if((h = fopen("data.dat", "r+b")) == NULL) {
 		printf("Error: could not open data file.\n");
 		return false;
 	}
+	// Load hyperparameters
+
 	fread(n, sizeof(int), 1, h);											// number of datapoints
 	printf("number of data points = %d\n", *n);
 
@@ -758,6 +868,23 @@ bool TSNE::load_data(double** data, int* n, int* d, double** initial_solution, i
 
 	fread(lying_factor, sizeof(int), 1, h);									// lying/exaggeration factor
 	printf("lying factor = %d\n", *lying_factor);
+
+	// Load building block definitions
+
+	printf("loading building block definitions:\n");
+	fread(input_similarities, sizeof(int), 1, h);							// input similarities
+	printf("input similarities = %d\n", *input_similarities);
+
+	fread(output_similarities, sizeof(int), 1, h);							// output similarities
+	printf("output similarities = %d\n", *output_similarities);
+
+	fread(cost_function, sizeof(int), 1, h);								// cost function
+	printf("cost function = %d\n", *cost_function);
+
+	fread(optimization, sizeof(int), 1, h);									// optimization
+	printf("optimization = %d\n", *optimization);
+
+	// Data and optional randseed/initial solution
 
 	*data = (double*) malloc(*n * *d * sizeof(double));
     if(*data == NULL) { printf("Memory allocation failed!\n"); exit(1); }

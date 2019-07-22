@@ -13,9 +13,10 @@ import operator
 
 # directory structure
 CWD = os.path.dirname(os.path.realpath(__file__))
-RESULT_DIR = os.path.join("I:", "MasterThesis", "Experimental Results")
-TARGET = os.path.join("I:", "MasterThesis")
-PLOT_DIR = os.path.join(TARGET, "Plots")
+RESULT_DIR = os.path.join("I:", "MasterThesis", "Experimental Results") if os.path.exists("I:") \
+    else os.path.join(CWD, "results")
+PLOT_DIR = os.path.join("I:", "MasterThesis", "Plots") if os.path.exists("I:") \
+    else os.path.join(CWD, "plots")
 
 
 def get_bh_tsne_grouped_result_generator(root_dir=RESULT_DIR, data_identifier='mnist'):
