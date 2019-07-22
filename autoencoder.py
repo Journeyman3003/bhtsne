@@ -135,11 +135,11 @@ if __name__ == '__main__':
 
     data = mnist.mnist_1d_to_2d(data)
 
-    model, encoder, decoder = make_and_fit(data)
+    #model, encoder, decoder = make_and_fit(data)
     #
-    model.save("autoencoder.h5")
-    encoder.save("encoder.h5")
-    decoder.save("decoder.h5")
+    #model.save("autoencoder.h5")
+    #encoder.save("encoder.h5")
+    #decoder.save("decoder.h5")
 
     autoencoder = load_model("autoencoder.h5")
     encoder = load_model("encoder.h5")
@@ -150,10 +150,10 @@ if __name__ == '__main__':
 
     inputs, latent_embedding, outputs = get_triple(data)
 
-    indexes = list(map(lambda x: np.argmax(labels == x), np.arange(10)))
+    #indexes = list(map(lambda x: np.argmax(labels == x), np.arange(10)))
 
     #show_encodings(inputs[indexes], latent_embedding[indexes], outputs[indexes])
-    show_encodings(inputs[indexes], latent_embedding[indexes], outputs[indexes], filename="autoencoder-2dim-mnist.png")
+    #show_encodings(inputs[indexes], latent_embedding[indexes], outputs[indexes], filename="autoencoder-2dim-mnist.png")
 
     filename = "initial_solution_" + data_name + "_autoencoder.pickle"
 
