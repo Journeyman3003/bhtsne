@@ -13,9 +13,9 @@ import operator
 
 # directory structure
 CWD = os.path.dirname(os.path.realpath(__file__))
-RESULT_DIR = os.path.join(CWD, "results")
+RESULT_DIR = os.path.join("I:", "MasterThesis", "Experimental Results")
 TARGET = os.path.join("I:", "MasterThesis")
-PLOT_DIR = os.path.join(TARGET, "plots")
+PLOT_DIR = os.path.join(TARGET, "Plots")
 
 
 def get_bh_tsne_grouped_result_generator(root_dir=RESULT_DIR, data_identifier='mnist'):
@@ -32,6 +32,7 @@ def get_bh_tsne_grouped_result_generator(root_dir=RESULT_DIR, data_identifier='m
     files.sort()
 
     files_tuples = [(str(x).split(os.path.sep)[-5] + str(x).split(os.path.sep)[-4], x) for x in files]
+    files_tuples.sort()
 
     for _key, _grouper in itertools.groupby(files_tuples, operator.itemgetter(0)):
         yield _key, list(_grouper)
@@ -51,12 +52,17 @@ def plot_bh_tsne_result(_data, _labels, _legend="full", _palette="bright", _ax=N
     return _g
 
 
-def load_result_and_plot_comparison(_labels, root_dir=RESULT_DIR, data_identifier="mnist"):
+def load_result_and_plot_comparison(_labels, root_dir=RESULT_DIR, data_identifier="mnist",
+                                    plot_title_from_filepath_index=0):
 
     for _paramvalue, _file_list in get_bh_tsne_grouped_result_generator(root_dir=root_dir,
                                                                         data_identifier=data_identifier):
         print("Creating plot for data {} with parameter {}".format(data_identifier, _paramvalue))
         _result_list = [bhtsne.read_bh_tsne_result(_file) for _k, _file in _file_list]
+        # make titles based on file path
+        _title_list = [str(_file).split(os.path.sep)[plot_title_from_filepath_index]
+                       if plot_title_from_filepath_index < 0 else ""
+                       for _k, _file in _file_list]
         _paramvalue = _paramvalue.replace(".", "-")
         _dir = os.path.join(PLOT_DIR, _paramvalue, data_identifier)
         try:
@@ -69,7 +75,7 @@ def load_result_and_plot_comparison(_labels, root_dir=RESULT_DIR, data_identifie
         for _key in _result_list[0].keys():
             print("Creating plot for iteration {}".format(_key[0]))
             _data_list = [result[_key] for result in _result_list]
-            _fig = compare_n_results(_labels=_labels, _data_list=_data_list)
+            _fig = compare_n_results(_labels=_labels, _data_list=_data_list, _title_list=_title_list)
 
             save_figure(_fig, _dir, "-", _paramvalue, str(_key[0]))
             plt.close(_fig)
@@ -77,7 +83,7 @@ def load_result_and_plot_comparison(_labels, root_dir=RESULT_DIR, data_identifie
 
 
 
-def compare_n_results(_labels, _data_list, _size=8):
+def compare_n_results(_labels, _data_list, _title_list, _size=8):
     """
 
     :param _size: default width and height of single plot
@@ -106,7 +112,7 @@ def compare_n_results(_labels, _data_list, _size=8):
         j = idx % _ncols
 
         plot_bh_tsne_result(_data, _labels, _legend="full", _ax=_axs[i, j])
-        _axs[i, j].set_title("Cost: {}".format(np.sum(_data[:, 2])))
+        _axs[i, j].set_title("{} Cost: {}".format(_title_list[idx], np.sum(_data[:, 2])))
     # retrieve legend
     _handles, _labels = _axs[0, 0].get_legend_handles_labels()
 
@@ -157,7 +163,8 @@ if __name__ == "__main__":
 
     _, labels = mnist.load_mnist_data(True)
 
-    load_result_and_plot_comparison(_labels=labels)
+    load_result_and_plot_comparison(_labels=labels, root_dir=os.path.join(RESULT_DIR, "buildingblocks"),
+                                    plot_title_from_filepath_index=-6)
 
     # basepath1 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\unoptimized sptree\\1"
     # basepath2 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\optimized sptree\\1"
