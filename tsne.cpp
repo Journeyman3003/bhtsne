@@ -50,6 +50,7 @@ static void zeroMean(double* X, int N, int D);
 static void computeGaussianInputSimilarity(double* X, int N, int D, double* P, double perplexity);
 static void computeGaussianInputSimilarity(double* X, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, double perplexity, int K);
 static void computeLaplacianInputSimilarity(double* X, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, double perplexity, int K);
+static void computeStudentInputSimilarity(double* X, int no_dims, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, int K);
 static double randn();
 static void computeExactGradient(double* P, double* Y, int N, int D, double* dC);
 static void computeGradient(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
@@ -83,8 +84,6 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
     // Set learning parameters
     float total_time = .0;
     clock_t start, end;
-	// double momentum = .5, final_momentum = .8;
-	// double eta = 200.0;
 
     // Allocate some memory
     double* dY    = (double*) malloc(N * no_dims * sizeof(double));
@@ -137,6 +136,9 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 		switch (input_similarities) {
 			case 1: 
 				computeLaplacianInputSimilarity(X, N, D, &row_P, &col_P, &val_P, perplexity, (int)(3 * perplexity));
+				break;
+			case 2: 
+				computeStudentInputSimilarity(X, no_dims, N, D, &row_P, &col_P, &val_P, (int)(3 * perplexity));
 				break;
 			default: 
 				computeGaussianInputSimilarity(X, N, D, &row_P, &col_P, &val_P, perplexity, (int)(3 * perplexity));
@@ -666,6 +668,62 @@ static void computeLaplacianInputSimilarity(double* X, int N, int D, unsigned in
 	free(cur_P);
 	delete tree;
 }
+
+// Compute student input similarities with a fixed t = no_dims using ball trees (this function allocates memory another function should free)
+static void computeStudentInputSimilarity(double* X, int no_dims, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, int K) {
+
+	// Allocate the memory we need
+	*_row_P = (unsigned int*)malloc((N + 1) * sizeof(unsigned int));
+	*_col_P = (unsigned int*)calloc(N * K, sizeof(unsigned int));
+	*_val_P = (double*)calloc(N * K, sizeof(double));
+	if (*_row_P == NULL || *_col_P == NULL || *_val_P == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	unsigned int* row_P = *_row_P;
+	unsigned int* col_P = *_col_P;
+	double* val_P = *_val_P;
+	double* cur_P = (double*)malloc((N - 1) * sizeof(double));
+	if (cur_P == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	row_P[0] = 0;
+	for (int n = 0; n < N; n++) row_P[n + 1] = row_P[n] + (unsigned int)K;
+
+	// Build ball tree on data set
+	VpTree<DataPoint, euclidean_distance>* tree = new VpTree<DataPoint, euclidean_distance>();
+	vector<DataPoint> obj_X(N, DataPoint(D, -1, X));
+	for (int n = 0; n < N; n++) obj_X[n] = DataPoint(D, n, X + n * D);
+	tree->create(obj_X);
+	printf("STUDENT...\n");
+	// Loop over all points to find nearest neighbors
+	printf("Building tree...\n");
+	vector<DataPoint> indices;
+	vector<double> distances;
+	for (int n = 0; n < N; n++) {
+
+		if (n % 10000 == 0) printf(" - point %d of %d\n", n, N);
+
+		// Find nearest neighbors
+		indices.clear();
+		distances.clear();
+		tree->search(obj_X[n], K + 1, &indices, &distances);
+
+		// Compute Student kernel row with df = no_dims
+		for (int m = 0; m < K; m++) cur_P[m] = pow(1 + dist[m + 1] * dist[m + 1] / no_dims, -(no_dims + 1)/2)
+
+		double sum_P = DBL_MIN;
+		for (int m = 0; m < K; m++) sum_P += cur_P[m];
+
+		// Row-normalize current row of P and store in matrix
+		for (unsigned int m = 0; m < K; m++) cur_P[m] /= sum_P;
+		for (unsigned int m = 0; m < K; m++) {
+			col_P[row_P[n] + m] = (unsigned int)indices[m + 1].index();
+			val_P[row_P[n] + m] = cur_P[m];
+		}
+	}
+
+	// Clean up memory
+	obj_X.clear();
+	free(cur_P);
+	delete tree;
+}
+
 
 // Symmetrizes a sparse matrix
 static void symmetrizeMatrix(unsigned int** _row_P, unsigned int** _col_P, double** _val_P, int N) {
