@@ -78,7 +78,7 @@ DEFAULT_MOMENTUM_SWITCH_ITERATION = 250
 DEFAULT_EXAGGERATION_FACTOR = 12
 
 # Additional building block hyperparameters
-DEFAULT_BUILDING_BLOCK_INDEX = 1
+DEFAULT_BUILDING_BLOCK_INDEX = 0
 BUILDING_BLOCK_DICT = {
     "input_similarities": {
         "gaussian": 0,
