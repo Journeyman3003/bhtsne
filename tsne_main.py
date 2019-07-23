@@ -184,7 +184,7 @@ def _argparse():
 
 
 def tsne_workflow(parameter_name, value_list, data, result_base_dir, data_result_subdirectory,
-                  initial_embedding_method=None):
+                  initial_embedding_method=None, **kwargs):
     """
 
     :param parameter_name:
@@ -234,7 +234,7 @@ def tsne_workflow(parameter_name, value_list, data, result_base_dir, data_result
             # perform PCA to 50 dims beforehand
             # use initial embedding
             bh_tsne_dict = bhtsne.run_bh_tsne(data, verbose=True, initial_solution=_initial_embedding,
-                                              **{parameter_name: value})
+                                              **{parameter_name: value}, **kwargs)
 
             # save results
             # timestamp
@@ -332,11 +332,25 @@ if __name__ == "__main__":
         #                RUN BUILDINGBLOCK ANALYSIS               #
         ###########################################################
         else:
+            building_blocks = [("input_similarities", argp.input_similarities)]
+            building_blocks.append(("output_similarities", argp.output_similarities))
+            building_blocks.append(("cost_function", argp.cost_function))
+            building_blocks.append(("optimization", argp.optimization))
+
+            modified_buildingblocks = list(filter(lambda x: bhtsne.BUILDING_BLOCK_DICT[x[0]][x[1]] != 0,
+                                                  building_blocks))
+
+            if not modified_buildingblocks:
+                modified_buildingblocks = [("default", "default")]
+
+            directory = os.path.join("-".join([x[0] for x in modified_buildingblocks]),
+                                     "-".join([x[1] for x in modified_buildingblocks]))
+            kwargs = {x[0]: bhtsne.BUILDING_BLOCK_DICT[x[0]][x[1]] for x in building_blocks}
             for param in param_list:
                 tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
                               data_result_subdirectory=data_name,
-                              result_base_dir=os.path.join(PARAMTUNING_DIR, PARAM_DICT[param][1]),
-                              initial_embedding_method=initial_embedding)
+                              result_base_dir=os.path.join(BUILDINGBLOCK_DIR, directory),
+                              initial_embedding_method=initial_embedding, **kwargs)
 
         # skip zip attachment as it simply grows too big
         # create zip archive of results
