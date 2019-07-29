@@ -349,7 +349,7 @@ if __name__ == "__main__":
             for param in param_list:
                 tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
                               data_result_subdirectory=data_name,
-                              result_base_dir=os.path.join(BUILDINGBLOCK_DIR, directory),
+                              result_base_dir=os.path.join(BUILDINGBLOCK_DIR, directory, PARAM_DICT[param][1]),
                               initial_embedding_method=initial_embedding, **kwargs)
 
         # skip zip attachment as it simply grows too big

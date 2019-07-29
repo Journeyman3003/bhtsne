@@ -162,11 +162,11 @@ if __name__ == "__main__":
     #if argv < 2:
     #    print("Please specify the .pickle file to be read: tsne_plot.py <.pickle-file>!")
 
-    # _, labels = mnist.load_mnist_data(True)
-    _, labels = mnist.load_fashion_mnist_data()
+    _, labels = mnist.load_mnist_data(False)
+    #_, labels = mnist.load_fashion_mnist_data()
 
-    load_result_and_plot_comparison(_labels=labels, root_dir=os.path.join(RESULT_DIR, "buildingblocks"),
-                                    plot_title_from_filepath_index=-6, data_identifier="fashion_mnist")
+    load_result_and_plot_comparison(_labels=labels, root_dir=os.path.join(RESULT_DIR, "buildingblocks", "input_similarities"),
+                                    plot_title_from_filepath_index=-6, data_identifier="mnist2500")
 
     # basepath1 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\unoptimized sptree\\1"
     # basepath2 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\optimized sptree\\1"

@@ -705,7 +705,7 @@ static void computeStudentInputSimilarity(double* X, int no_dims, int N, int D, 
 		tree->search(obj_X[n], K + 1, &indices, &distances);
 
 		// Compute Student kernel row with df = no_dims
-		for (int m = 0; m < K; m++) cur_P[m] = pow(1 + dist[m + 1] * dist[m + 1] / no_dims, -(no_dims + 1)/2)
+		for (int m = 0; m < K; m++) cur_P[m] = pow(1 + distances[m + 1] * distances[m + 1] / no_dims, -(no_dims + 1) / 2);
 
 		double sum_P = DBL_MIN;
 		for (int m = 0; m < K; m++) sum_P += cur_P[m];
