@@ -69,11 +69,12 @@ SPTree::SPTree(unsigned int D, double* inp_data, unsigned int N)
 	widths.push_back(std::move(width));
 
 	point = data;
-	root = new_node(point, std::move(mean_Y), widths[0].data());
+	// root is always the first in Y, that is point index = 0
+	root = new_node(point, 0, std::move(mean_Y), widths[0].data());
 
 	for (unsigned int i = 1; i < N; i++) {
 		point += D;
-		insert(root, point);
+		insert(root, point, i);
 	}
 
 	for (Node& node : nodes) {
@@ -88,12 +89,13 @@ SPTree::SPTree(unsigned int D, double* inp_data, unsigned int N)
 SPTree::~SPTree() = default;
 
 // Create a new leaf node
-SPTree::Node* SPTree::new_node(const double* point, std::vector<double> center, const double* width)
+SPTree::Node* SPTree::new_node(const double* point, unsigned int point_index, std::vector<double> center, const double* width)
 {
 	nodes.emplace_back();
 	Node* node = &nodes.back();
 	node->point = point;
 	node->size = 1;
+	node->indices.push_back(point_index);
 	node->center = std::move(center);
 	node->width = width;
 	node->center_of_mass.assign(point, point + dimension);
@@ -101,12 +103,13 @@ SPTree::Node* SPTree::new_node(const double* point, std::vector<double> center, 
 }
 
 // Insert a point into the SPTree
-void SPTree::insert(Node* node, const double* point)
+void SPTree::insert(Node* node, const double* point, unsigned int point_index)
 {
 	unsigned int depth = 0;
 
 	while (node->point != point) {
 		++node->size;
+		node->indices.push_back(point_index);
 
 		for (unsigned int d = 0; d < dimension; ++d) {
 			node->center_of_mass[d] += point[d];
@@ -116,16 +119,17 @@ void SPTree::insert(Node* node, const double* point)
 
 		if (node->point) {
 			// If this is a leaf note, split it into an internal node
-			insertChild(node, node->point, depth);
+			// pass the point index of leaf node to to-be child nodes
+			insertChild(node, node->point, node->indices[0], depth);
 			node->point = nullptr;
 		}
 
-		node = insertChild(node, point, depth);
+		node = insertChild(node, point, point_index, depth);
 	}
 }
 
 // Find the right child node for a point, creating it if necessary
-SPTree::Node* SPTree::insertChild(Node* node, const double* point, unsigned int depth) {
+SPTree::Node* SPTree::insertChild(Node* node, const double* point, unsigned int point_index, unsigned int depth) {
 	// Find which child to insert into
 	unsigned int i = 0;
 	for (unsigned int d = 0; d < dimension; ++d) {
@@ -160,7 +164,7 @@ SPTree::Node* SPTree::insertChild(Node* node, const double* point, unsigned int 
 			}
 		}
 
-		child = new_node(point, std::move(center), width);
+		child = new_node(point, point_index, std::move(center), width);
 		node->children[i] = child;
 	}
 
@@ -174,6 +178,22 @@ void SPTree::computeNonEdgeForces(unsigned int point_index, double theta, double
 	computeNonEdgeForces(root, max_width * max_width, point, theta * theta, neg_f, sum_Q);
 }
 
+void SPTree::computeNonEdgeForcesRKL(unsigned int point_index, double theta, double* term_1, double* term_2, double* term_3, double* sum_Q,
+									 unsigned int* row_P, unsigned int* col_P) //row_p and col_p for blacklisted values
+{
+	double* point = data + point_index * dimension;
+	// point index still required to determine blacklisted values
+	computeNonEdgeForcesRKL(root, max_width * max_width, point, point_index, theta * theta, term_1, term_2, term_3, sum_Q, row_P, col_P);
+}
+
+void SPTree::computeNonEdgeForcesRKLGradient(unsigned int point_index, double theta, double* sum_dist, double* sum_Esq_logE, double* sum_Esq, double* sum_Esq_dist_logE, double* sum_Esq_dist, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
+{
+	double* point = data + point_index * dimension;
+	// point index still required to determine blacklisted values
+	computeNonEdgeForcesRKLGradient(root, max_width * max_width, point, point_index, theta * theta, 
+									sum_dist, sum_Esq_logE, sum_Esq, sum_Esq_dist_logE, sum_Esq_dist, sum_Q, row_P, col_P);
+}
+
 // Compute non-edge forces using Barnes-Hut algorithm
 void SPTree::computeNonEdgeForces(Node* node, double max_width_sq, double* point, double theta_sq, double neg_f[], double* sum_Q)
 {
@@ -184,17 +204,17 @@ void SPTree::computeNonEdgeForces(Node* node, double max_width_sq, double* point
 	double D = 0.0;
 	for (unsigned int d = 0; d < dimension; d++) {
 		double diff = point[d] - node->center_of_mass[d];
-		D += diff * diff;
+		D += diff * diff; // || y_i - y_j ||^2
 	}
 
 	// Optimize (max_width / sqrt(D) < theta) by squaring and multiplying through by D
 	if (node->point || max_width_sq < theta_sq * D) {
 		// Compute and add t-SNE force between point and current node
-		D = 1.0 / (1.0 + D);
-		double mult = node->size * D;
-		*sum_Q += mult;
-		mult *= D;
-		for (unsigned int d = 0; d < dimension; d++) {
+		D = 1.0 / (1.0 + D); // || E_ij^-1
+		double mult = node->size * D; // || node_size * E_ij^-1
+		*sum_Q += mult; // add to Z
+		mult *= D; // E_ij^2 --> q_ij^2 * Z^2 (note the actual term is q_ij^2 * Z!)
+		for (unsigned int d = 0; d < dimension; d++) { // split computation of SUM(q_ij^2 * Z * (y_i - y_j)) dimension-wise
 			double diff = point[d] - node->center_of_mass[d];
 			neg_f[d] += mult * diff;
 		}
@@ -204,6 +224,114 @@ void SPTree::computeNonEdgeForces(Node* node, double max_width_sq, double* point
 		for (Node* child : node->children) {
 			if (child) {
 				computeNonEdgeForces(child, max_width_sq / 4.0, point, theta_sq, neg_f, sum_Q);
+			}
+		}
+	}
+}
+
+// Compute non-edge forces using Barnes-Hut algorithm for RKL objective
+void SPTree::computeNonEdgeForcesRKL(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq, double* term_1, double* term_2, double* term_3, double* sum_Q,
+									 unsigned int* row_P, unsigned int* col_P) //row_p and col_p for blacklisted values)
+{
+	// Make sure that we spend no time on self-interactions
+	if (node->point == point) return;
+
+	// Compute distance between point and center-of-mass
+	double D = 0.0;
+	for (unsigned int d = 0; d < dimension; d++) {
+		double diff = point[d] - node->center_of_mass[d];
+		D += diff * diff; // || y_i - y_j ||^2
+	}
+
+	// Optimize (max_width / sqrt(D) < theta) by squaring and multiplying through by D
+	if (node->point || max_width_sq < theta_sq * D) {
+		// Compute and add t-SNE force between point and current node
+		D = 1.0 / (1.0 + D); // || E_ij^-1
+		double mult = node->size * D; // || node_size * E_ij^-1
+		*sum_Q += mult; // add to Z
+
+		unsigned int blacklist_count = 0;
+		for (unsigned int i = row_P[point_index]; i < row_P[point_index + 1]; i++) {
+			for (unsigned int j = 0; j < node->indices.size(); j++) {
+				if (col_P[i] == node->indices[j]) blacklist_count++;
+			}
+		}
+
+		//term_1
+		*term_1 += mult * log(mult); // node_size * E_ij^-1 * log node_size * E_ij^-1
+
+		//term_2 
+		*term_2 += mult; // node_size * E_ij^-1
+
+		//term_3
+		*term_3 += (node->size - blacklist_count) * D; // (node_size-blacklist) * E_ij^-1
+	}
+	else {
+		// Recursively apply Barnes-Hut to children
+		for (Node* child : node->children) {
+			if (child) {
+				computeNonEdgeForcesRKL(child, max_width_sq / 4.0, point, point_index, theta_sq, term_1, term_2, term_3, sum_Q, row_P, col_P);
+			}
+		}
+	}
+}
+
+void SPTree::computeNonEdgeForcesRKLGradient(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq, double* sum_dist, double* sum_Esq_logE, double* sum_Esq, double* sum_Esq_dist_logE, double* sum_Esq_dist, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
+{
+	// Make sure that we spend no time on self-interactions
+	if (node->point == point) return;
+
+	// Compute distance between point and center-of-mass
+	double D = 0.0;
+	for (unsigned int d = 0; d < dimension; d++) {
+		double diff = point[d] - node->center_of_mass[d];
+		D += diff * diff; // || y_i - y_j ||^2
+	}
+
+	// Optimize (max_width / sqrt(D) < theta) by squaring and multiplying through by D
+	if (node->point || max_width_sq < theta_sq * D) {
+		// Compute and add t-SNE force between point and current node
+		double E = 1.0 / (1.0 + D); // || E_ij^-1
+
+		unsigned int blacklist_count = 0;
+		for (unsigned int i = row_P[point_index]; i < row_P[point_index + 1]; i++) {
+			for (unsigned int j = 0; j < node->indices.size(); j++) {
+				if (col_P[i] == node->indices[j]) blacklist_count++;
+			}
+		}
+
+		//compute dimension-wise terms (i.e. all terms including (y_i-y_j))
+
+		for (unsigned int d = 0; d < dimension; d++) { 
+			// sum_dist
+			// no split w.r.t p required -> no blacklisting
+			sum_dist[d] += node->size * (point[d] - node->center_of_mass[d]); //sum(y_i - Y_j)
+
+			// sum_Esq_dist_logE
+			// no split w.r.t p required -> no blacklisting
+			sum_Esq_dist_logE[d] += node->size * (E * E * (point[d] - node->center_of_mass[d]) * log(E)); //sum((E_ij^-1))^2 * (y_i - y_j) * log(E))
+
+			// sum_Esq_dist
+			// split w.r.t p required -> blacklisting!
+			sum_Esq_dist[d] += (node->size - blacklist_count) * (E * E * (point[d] - node->center_of_mass[d])); //sum((E_ij ^ -1)) ^ 2 * (y_i - y_j)
+		}
+
+		//compute dimension-unrelated terms (i.e. all terms excluding (y_i-y_j))
+		
+		// sum_Esq_logE
+		// no split w.r.t p required -> no blacklisting
+		*sum_Esq_logE += node->size * (E * E * log(E)); // sum((E_ij^-1)^2 * log E_ij^-1)
+
+		// sum_Esq
+		// split w.r.t p required -> blacklisting!
+		*sum_Esq += (node->size - blacklist_count) * (E * E); //sum((E_ij ^ -1) ^ 2)
+
+	}
+	else {
+		// Recursively apply Barnes-Hut to children
+		for (Node* child : node->children) {
+			if (child) {
+				computeNonEdgeForcesRKLGradient(child, max_width_sq / 4.0, point, point_index, theta_sq, sum_dist, sum_Esq_logE, sum_Esq, sum_Esq_dist_logE, sum_Esq_dist, sum_Q, row_P, col_P);
 			}
 		}
 	}

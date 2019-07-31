@@ -360,12 +360,14 @@ def debug_bh_tsne_pre(data):
 
     tmp_dir_path = os.path.abspath(path_join(os.path.dirname(__file__), "windows",))
 
-    init_bh_tsne(data, tmp_dir_path, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL_DIMENSIONS,
+    init_bh_tsne(data, tmp_dir_path, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL_DIMENSIONS, initial_solution=None,
                  perplexity=DEFAULT_PERPLEXITY, learning_rate=DEFAULT_LEARNING_RATE, momentum=DEFAULT_MOMENTUM,
-                 final_momentum=DEFAULT_FINAL_MOMENTUM, theta=DEFAULT_THETA, randseed=42,
+                 final_momentum=DEFAULT_FINAL_MOMENTUM, theta=DEFAULT_THETA, randseed=EMPTY_SEED,
                  use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS, stop_lying_iter=DEFAULT_STOP_LYING_ITERATION,
                  restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
-                 momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=DEFAULT_EXAGGERATION_FACTOR)
+                 momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=DEFAULT_EXAGGERATION_FACTOR,
+                 input_similarities=DEFAULT_BUILDING_BLOCK_INDEX, output_similarities=DEFAULT_BUILDING_BLOCK_INDEX,
+                 cost_function=DEFAULT_BUILDING_BLOCK_INDEX, optimization=DEFAULT_BUILDING_BLOCK_INDEX)
 
 
 def debug_data_file(workdir, sample_count, len_sample):

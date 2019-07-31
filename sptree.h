@@ -47,6 +47,9 @@ class SPTree
 		// The total number of points in this subtree
 		std::size_t size;
 
+		// The indices of points in this subtree
+		std::vector<unsigned int> indices;
+
 		// Axis-aligned bounding box stored as a center with half-dimension widths
 		std::vector<double> center;
 		const double* width;
@@ -79,14 +82,24 @@ public:
 	~SPTree();
 
 	void computeNonEdgeForces(unsigned int point_index, double theta, double neg_f[], double* sum_Q);
+	void computeNonEdgeForcesRKL(unsigned int point_index, double theta, double* term_1, double* term_2, double* term_3, double* sum_Q,
+								 unsigned int* row_P, unsigned int* col_P); //row_p and col_p for blacklisted values
+	void computeNonEdgeForcesRKLGradient(unsigned int point_index, double theta, double* sum_dist, double* sum_Esq_logE, double* sum_Esq,
+										 double* sum_Esq_dist_logE, double* sum_Esq_dist, double* sum_Q, unsigned int* row_P, unsigned int* col_P); //row_p and col_p for blacklisted values
 	void computeEdgeForces(unsigned int* row_P, unsigned int* col_P, double* val_P, int N, double* pos_f);
 	void print();
 
 private:
-	Node* new_node(const double* point, std::vector<double> center, const double* width);
-	void insert(Node* node, const double* point);
-	Node* insertChild(Node* node, const double* point, unsigned int depth);
+	Node* new_node(const double* point, unsigned int point_index, std::vector<double> center, const double* width);
+	void insert(Node* node, const double* point, unsigned int point_index);
+	Node* insertChild(Node* node, const double* point, unsigned int point_index, unsigned int depth);
 	void computeNonEdgeForces(Node* node, double max_width_sq, double* point, double theta_sq, double neg_f[], double* sum_Q);
+	void computeNonEdgeForcesRKL(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq,
+								 double* term_1, double* term_2, double* term_3, double* sum_Q,
+								 unsigned int* row_P, unsigned int* col_P); //row_p and col_p for blacklisted values
+	void computeNonEdgeForcesRKLGradient(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq,
+										 double* sum_dist, double* sum_Esq_logE, double* sum_Esq, double* sum_Esq_dist_logE, 
+										 double* sum_Esq_dist, double* sum_Q, unsigned int* row_P, unsigned int* col_P); //row_p and col_p for blacklisted values
 	void print(Node* node);
 };
 
