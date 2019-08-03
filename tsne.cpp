@@ -53,8 +53,10 @@ static void computeLaplacianInputSimilarity(double* X, int N, int D, unsigned in
 static void computeStudentInputSimilarity(double* X, int no_dims, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, int K);
 static double randn();
 static void computeExactGradient(double* P, double* Y, int N, int D, double* dC);
-static void computeGradient(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
+static void computeGradientKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
 static void computeGradientRKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
+static void approximateGradientKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
+static double computeSingleKL(int n, int D, double* Y, unsigned int* row_P, unsigned int* col_P, double* val_P, double sum_Q, double h = .0, int dimension_h = -1);
 static double evaluateError(double* P, double* Y, int N, int D, double* costs);
 static double evaluateKLError(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
 static double evaluateRKLError(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
@@ -89,8 +91,11 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 
     // Allocate some memory
     double* dY    = (double*) malloc(N * no_dims * sizeof(double));
+	double* dY2 = (double*)malloc(N * no_dims * sizeof(double));
     double* uY    = (double*) malloc(N * no_dims * sizeof(double));
+	//double* uY2 = (double*)malloc(N * no_dims * sizeof(double));
     double* gains = (double*) malloc(N * no_dims * sizeof(double));
+	//double* gains2 = (double*)malloc(N * no_dims * sizeof(double));
     if(dY == NULL || uY == NULL || gains == NULL) { printf("Memory allocation failed!\n"); exit(1); }
     for(int i = 0; i < N * no_dims; i++)    uY[i] =  .0;
     for(int i = 0; i < N * no_dims; i++) gains[i] = 1.0;
@@ -183,8 +188,12 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 
         // Compute (approximate) gradient
 		if (exact) computeExactGradient(P, Y, N, no_dims, dY);
-		//else computeGradient(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
-		else computeGradientRKL(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+		else {
+			//computeGradientKL(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+			approximateGradientKL(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+			//computeGradientRKL(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+		}
+		//else 
 
         // Update gains
         for(int i = 0; i < N * no_dims; i++) gains[i] = (sign(dY[i]) != sign(uY[i])) ? (gains[i] + .2) : (gains[i] * .8);
@@ -193,6 +202,14 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
         // Perform gradient update (with momentum and gains)
         for(int i = 0; i < N * no_dims; i++) uY[i] = momentum * uY[i] - eta * gains[i] * dY[i];
 		for(int i = 0; i < N * no_dims; i++)  Y[i] = Y[i] + uY[i];
+
+		// Update gains 2 (delete me)
+		//for (int i = 0; i < N * no_dims; i++) gains2[i] = (sign(dY2[i]) != sign(uY2[i])) ? (gains2[i] + .2) : (gains2[i] * .8);
+		//for (int i = 0; i < N * no_dims; i++) if (gains2[i] < .01) gains2[i] = .01;
+
+		// Perform gradient update (with momentum and gains) /delete me)
+		//for (int i = 0; i < N * no_dims; i++) uY2[i] = momentum * uY2[i] - eta * gains2[i] * dY2[i];
+		//for (int i = 0; i < N * no_dims; i++)  Y[i] = Y[i] + uY2[i];
 
         // Make solution zero-mean
 		zeroMean(Y, N, no_dims);
@@ -219,16 +236,16 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
             if(exact) C = evaluateError(P, Y, N, no_dims, costs);
 			else {
 				C = evaluateKLError(row_P, col_P, val_P, Y, N, no_dims, theta, costs);  // doing approximate computation here!
-				CRKL = evaluateRKLError(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
+				//CRKL = evaluateRKLError(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
 			}
 			if (iter == 0) {
 				printf("Iteration %d: error is %f\n", iter + 1, C);
-				printf("Iteration %d: RKL error would be %f\n", iter + 1, CRKL);
+				//printf("Iteration %d: RKL error would be %f\n", iter + 1, CRKL);
 			}
             else {
                 total_time += (float) (end - start) / CLOCKS_PER_SEC;
                 printf("Iteration %d: error is %f (50 iterations in %4.2f seconds)\n", iter + 1, C, (float) (end - start) / CLOCKS_PER_SEC);
-				printf("Iteration %d: RKL error would be %f (50 iterations in %4.2f seconds)\n", iter + 1, CRKL, (float)(end - start) / CLOCKS_PER_SEC);
+				//printf("Iteration %d: RKL error would be %f (50 iterations in %4.2f seconds)\n", iter + 1, CRKL, (float)(end - start) / CLOCKS_PER_SEC);
 			}
 			//no matter whether iteration is 0 or % 50 == 0 or max_iter - 1, save the current results
 			save_data(Y, landmarks, costs, N, no_dims, iter + 1);
@@ -255,7 +272,7 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 
 
 // Compute gradient of the t-SNE cost function (using Barnes-Hut algorithm)
-static void computeGradient(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta)
+static void computeGradientKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta)
 {
 
     // Construct space-partitioning tree on current map
@@ -311,10 +328,10 @@ static void computeGradientRKL(unsigned int* inp_row_P, unsigned int* inp_col_P,
 	// Compute final t-SNE gradient nonedge forces
 	for (int n = 0; n < N; n++) {
 		for (int d = 0; d < D; d++) {
-			dC[n * d + d] = sum_dist[n * d + d] * 8 * sum_Esq_logE[n] - sum_dist[n * d + d] * log(sum_Q) * 8 * sum_Esq[n];
-			dC[n * d + d] -= sum_dist[n * d + d] * 8 * sum_Esq[n] * log(DBL_MIN);
-			dC[n * d + d] -= 4 / sum_Q * sum_Esq_dist_logE[n * d + d] + 4 * log(sum_Q) / sum_Q * sum_Esq_dist[n * d + d];
-			dC[n * d + d] += 4 / sum_Q * sum_Esq_dist[n * d + d] * log(DBL_MIN);
+			dC[n * D + d] = sum_dist[n * D + d] * 8 * sum_Esq_logE[n] - sum_dist[n * D + d] * log(sum_Q) * 8 * sum_Esq[n];
+			dC[n * D + d] -= sum_dist[n * D + d] * 8 * sum_Esq[n] * log(FLT_MIN);
+			dC[n * D + d] -= 4 / sum_Q * sum_Esq_dist_logE[n * D + d] + 4 * log(sum_Q) / sum_Q * sum_Esq_dist[n * D + d];
+			dC[n * D + d] += 4 / sum_Q * sum_Esq_dist[n * D + d] * log(FLT_MIN);
 		}
 	}
 
@@ -338,8 +355,7 @@ static void computeGradientRKL(unsigned int* inp_row_P, unsigned int* inp_col_P,
 		}
 		// finally, add to gradient
 		for (int d = 0; d < D; d++) {
-			dC[n * d + d] += -sum_dist[n * d + d] * 8 * _sum_Esq_P
-				+ 4 / sum_Q * _sum_Esq_dist_P[d];
+			dC[n * D + d] += -sum_dist[n * D + d] * 8 * _sum_Esq_P + 4 / sum_Q * _sum_Esq_dist_P[d];
 		}
 	}
 
@@ -352,6 +368,35 @@ static void computeGradientRKL(unsigned int* inp_row_P, unsigned int* inp_col_P,
 	free(sum_Esq_dist_logE); sum_Esq_dist_logE = NULL;
 	free(sum_Esq_logE); sum_Esq_logE = NULL;
 	delete tree;
+}
+
+static void approximateGradientKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta)
+{
+	// Construct space-partitioning tree on current map
+	SPTree* tree = new SPTree(D, Y, N);
+
+	// Compute all terms required for t-SNE gradient
+	double sum_Q = .0;
+	//double* pos_f = (double*)calloc(N * D, sizeof(double));
+	double* buff = (double*)calloc(D, sizeof(double));
+	if (buff == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	//tree->computeEdgeForces(inp_row_P, inp_col_P, inp_val_P, N, pos_f);
+	for (int n = 0; n < N; n++) tree->computeNonEdgeForces(n, theta, buff, &sum_Q);
+
+	double h = sqrt(DBL_EPSILON);
+
+	// Compute final t-SNE gradient
+	for (int n = 0; n < N; n++) {
+		for (int d = 0; d < D; d++) {
+			//dC[i] = (f(x_i + h) - (f(x_i - h)) / 2h
+			dC[n * D + d] = 2* computeSingleKL(n, D, Y, inp_row_P, inp_col_P, inp_val_P, sum_Q, h, d);
+			dC[n * D + d] -= 2 * computeSingleKL(n, D, Y, inp_row_P, inp_col_P, inp_val_P, sum_Q, -h, d);
+			dC[n * D + d] /= (2 * h);
+		}
+	}
+	free(buff);
+	delete tree;
+
 }
 
 // Compute gradient of the t-SNE cost function (exact)
@@ -402,6 +447,35 @@ static void computeExactGradient(double* P, double* Y, int N, int D, double* dC)
     free(DD); DD = NULL;
     free(Q);  Q  = NULL;
 }
+
+static double computeSingleKL(int n, int D, double* Y, unsigned int* row_P, unsigned int* col_P, double* val_P, double sum_Q, double h, int dimension_h){
+	int ind1, ind2;
+	ind1 = n * D;
+	double* dist = (double*)calloc(D, sizeof(double));
+	// variable to store cost of point n
+	double Cn = .0;
+	for (int i = row_P[n]; i < row_P[n + 1]; i++) {
+		double Q = .0;
+		ind2 = col_P[i] * D;
+		for (int d = 0; d < D; d++) {
+			if (d == dimension_h) {
+				dist[d] = Y[ind1 + d] + h;
+			}
+			else {
+				dist[d] = Y[ind1 + d];
+			}
+		}
+		for (int d = 0; d < D; d++) dist[d] -= Y[ind2 + d];
+		for (int d = 0; d < D; d++) Q += dist[d] * dist[d];
+		Q = (1.0 / (1.0 + Q)) / sum_Q;
+		Cn += val_P[i] * log((val_P[i] + FLT_MIN) / (Q + FLT_MIN));
+	}
+
+	// Clean up memory
+	free(dist);
+	return Cn;
+}
+
 
 
 // Evaluate t-SNE cost function (exactly)
@@ -462,24 +536,10 @@ static double evaluateKLError(unsigned int* row_P, unsigned int* col_P, double* 
     for(int n = 0; n < N; n++) tree->computeNonEdgeForces(n, theta, buff, &sum_Q);
 
     // Loop over all edges to compute t-SNE error
-    int ind1, ind2;
-    double C = .0, Q;
+	double C = .0;
     for(int n = 0; n < N; n++) {
-        ind1 = n * D;
-		// variable to store cost of point n
-		double Cn = .0;
-        for(int i = row_P[n]; i < row_P[n + 1]; i++) {
-            Q = .0;
-            ind2 = col_P[i] * D;
-            for(int d = 0; d < D; d++) buff[d]  = Y[ind1 + d];
-            for(int d = 0; d < D; d++) buff[d] -= Y[ind2 + d];
-            for(int d = 0; d < D; d++) Q += buff[d] * buff[d];
-            Q = (1.0 / (1.0 + Q)) / sum_Q;
-            C += val_P[i] * log((val_P[i] + FLT_MIN) / (Q + FLT_MIN));
-			Cn += val_P[i] * log((val_P[i] + FLT_MIN) / (Q + FLT_MIN));
-
-        }
-		costs[n] = Cn;
+		costs[n] = computeSingleKL(n, D, Y, row_P, col_P, val_P, sum_Q);
+		C += costs[n];
     }
 
     // Clean up memory
@@ -488,7 +548,7 @@ static double evaluateKLError(unsigned int* row_P, unsigned int* col_P, double* 
     return C;
 }
 
-double evaluateRKLError(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs)
+static double evaluateRKLError(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs)
 {
 
 	// RKL = Q * log (Q / P)
@@ -510,7 +570,7 @@ double evaluateRKLError(unsigned int* row_P, unsigned int* col_P, double* val_P,
 		term_1[n] *= 1 / sum_Q * term_1[n];
 		term_2[n] *= 1 / sum_Q * log(sum_Q) * term_2[n];
 		//using log(DBL_MIN) to approximate log(0)
-		term_3[n] *= 1 / sum_Q * log(DBL_MIN) * term_3[n];
+		term_3[n] *= 1 / sum_Q * log(FLT_MIN) * term_3[n];
 		costs[n] = term_1[n] - term_2[n] - term_3[n];
 	}
 

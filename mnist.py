@@ -18,7 +18,24 @@ import urllib.request
 DEFAULT_DIR = 'MNIST'
 
 
-def load_mnist_data(all_data=False, dir_name=DEFAULT_DIR):
+def sample_data(data, labels, num_samples=2500):
+
+    # get unique labels
+    unique_labels = np.unique(labels)
+    num_samples_per_class = int(num_samples/len(unique_labels))
+    filter_index = []
+
+    for l in unique_labels:
+        indices = np.where(labels == l)
+        filter_index.extend(indices[0][:num_samples_per_class])
+
+    # filter for found indices
+    _sample_data = data[filter_index]
+    _sample_labels = labels[filter_index]
+
+    return _sample_data, _sample_labels
+
+def load_mnist_data(all_data=True, dir_name=DEFAULT_DIR):
     if all_data:
         pickle_mnist = os.path.join(dir_name, 'mnist.pkl.gz')
         if not os.path.exists(pickle_mnist):
@@ -46,8 +63,7 @@ def load_mnist_data(all_data=False, dir_name=DEFAULT_DIR):
         return mnist, label
 
 
-def load_fashion_mnist_data(dir_name=DEFAULT_DIR):
-
+def load_fashion_mnist_data(all_data=True, dir_name=DEFAULT_DIR):
     # init empty numpy arrays
 
     fashion_mnist_images = np.empty((0, 784))
@@ -82,7 +98,10 @@ def load_fashion_mnist_data(dir_name=DEFAULT_DIR):
         fashion_mnist_images = np.vstack((fashion_mnist_images, images))
         fashion_mnist_labels = np.hstack((fashion_mnist_labels, labels))
 
-    return fashion_mnist_images, fashion_mnist_labels
+    if all_data:
+        return fashion_mnist_images, fashion_mnist_labels
+    else:
+        return sample_data(fashion_mnist_images, fashion_mnist_labels, 2500)
 
 
 def mnist_1d_to_2d(data, num_observations=70000, img_rows=28, img_cols=28):
@@ -95,7 +114,8 @@ def mnist_2d_to_1d(data, num_observations=70000, img_rows=28, img_cols=28):
 
 if __name__ == '__main__':
     #x, label = load_mnist_data(True)
-    fashion_x, fashion_label = load_fashion_mnist_data()
+    fashion_x, fashion_label = load_fashion_mnist_data(all_data=False)
+
 
 
 

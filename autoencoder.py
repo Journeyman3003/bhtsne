@@ -113,7 +113,7 @@ def show_encodings(inputs, latent_repr, outputs, filename="autoencoder-2dim-fash
     n = len(inputs)
     fig, axes = plt.subplots(2, n, figsize=(2 * n, 5))
     for i in range(n):
-        axes[0, i].set_title(str(i))
+        axes[0, i].set_title(FASHION_LABELDICT[i]) if "fashion" in filename else axes[0, i].set_title(str(i))
         axes[1, i].set_title('({0:.2f}, {1:.2f})'.format(float(latent_repr[i, 0]), float(latent_repr[i, 1])))
         axes[0, i].imshow(inputs[i].reshape(28, 28), cmap='gray')
         axes[1, i].imshow(outputs[i].reshape(28, 28), cmap='gray')
@@ -128,9 +128,9 @@ def show_encodings(inputs, latent_repr, outputs, filename="autoencoder-2dim-fash
 
 if __name__ == '__main__':
 
-    data_name = "mnist2500"
+    data_name = "fashion_mnist2500"
     #data_name = "mnist"
-    data, labels = mnist.load_mnist_data(False)
+    data, labels = mnist.load_fashion_mnist_data(False)
     # #data, labels = mnist.load_mnist_data(True)
     #
     data = mnist.mnist_1d_to_2d(data, num_observations=2500)
@@ -148,19 +148,20 @@ if __name__ == '__main__':
     # # #encoder.save("encoder.h5")
     # # #decoder.save("decoder.h5")
     # #
-    autoencoder = load_model(os.path.join("autoencoders", "mnist", "autoencoder.h5"))
-    encoder = load_model(os.path.join("autoencoders", "mnist","encoder.h5"))
-    decoder = load_model(os.path.join("autoencoders", "mnist","decoder.h5"))
+    autoencoder = load_model(os.path.join("autoencoders", "fashion_mnist", "autoencoder.h5"))
+    encoder = load_model(os.path.join("autoencoders", "fashion_mnist", "encoder.h5"))
+    decoder = load_model(os.path.join("autoencoders", "fashion_mnist", "decoder.h5"))
     # #
-    # data = np.reshape(data, (-1, 28, 28, 1)) / 255.0
-    data = np.reshape(data, (-1, 28, 28, 1))
+    data = np.reshape(data, (-1, 28, 28, 1)) / 255.0
+    # data = np.reshape(data, (-1, 28, 28, 1))
     # #
     inputs, latent_embedding, outputs = get_triple(data)
     # #
     indexes = list(map(lambda x: np.argmax(labels == x), np.arange(10)))
     # #
     # show_encodings(inputs[indexes], latent_embedding[indexes], outputs[indexes])
-    show_encodings(inputs[indexes], latent_embedding[indexes], outputs[indexes], filename="autoencoder-2dim-mnist2500.png")
+    show_encodings(inputs[indexes], latent_embedding[indexes], outputs[indexes],
+                   filename="autoencoder-2dim-fashion_mnist2500.png")
     # #
     filename = "initial_solution_" + data_name + "_autoencoder.pickle"
     # #

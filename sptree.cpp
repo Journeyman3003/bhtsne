@@ -292,6 +292,8 @@ void SPTree::computeNonEdgeForcesRKLGradient(Node* node, double max_width_sq, do
 	if (node->point || max_width_sq < theta_sq * D) {
 		// Compute and add t-SNE force between point and current node
 		double E = 1.0 / (1.0 + D); // || E_ij^-1
+		// compute sum_Q
+		*sum_Q += node->size * D; // node_size * E_ij^-1 add to Z
 
 		unsigned int blacklist_count = 0;
 		for (unsigned int i = row_P[point_index]; i < row_P[point_index + 1]; i++) {

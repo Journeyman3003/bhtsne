@@ -17,7 +17,7 @@ SUPPORTED_METHODS = ['random', 'gaussian', 'pca', 'lle', 'autoencoder']#,
 DEFAULT_SEED = 42
 
 
-def _embedding(_data, method='gaussian', dist='euclidean', scaling_factor=.0001, **kwargs):
+def _embedding(_data, method='gaussian', dist='euclidean', scaling_factor=1.0, **kwargs):
     """
     input: N x F dataframe of observations
     output: N x 2 image of input data under lens function
@@ -87,6 +87,9 @@ def create_initial_solutions(data_name, data,  scaling_factor=.0001):
 
                 with open(file_abspath, 'wb') as pickle_file:
                     pickle.dump(latent_embedding, pickle_file)
+        elif method == 'autoencoder':
+            # skip for now
+            None
         else:
             latent_embedding = _embedding(_data=data, method=method, scaling_factor=scaling_factor)
             filename = "initial_solution_" + data_name + "_" + method + '.pickle'
@@ -114,7 +117,12 @@ if __name__ == '__main__':
     # create_initial_solutions("mnist2500", mnist2500_data)
 
     # FASHION_MNIST
-    fashion_data, _ = mnist.load_fashion_mnist_data()
-    create_initial_solutions("fashion_mnist", fashion_data)
+    # fashion_data, _ = mnist.load_fashion_mnist_data()
+    # create_initial_solutions("fashion_mnist", fashion_data)
+
+    # FASHION_MNIST2500
+    fashion_mnist_data, _ = mnist.load_fashion_mnist_data(all_data=False)
+    create_initial_solutions("fashion_mnist2500", fashion_mnist_data)
+
 
 
