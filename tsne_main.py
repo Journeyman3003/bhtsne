@@ -25,8 +25,16 @@ RESULT_ZIP = os.path.join(CWD, "results.zip")
 MNIST_TEST = "mnist2500"
 MNIST = "mnist"
 FASHION_MNIST = "fashion_mnist"
+FASHION_MNIST10 = "fashion_mnist10"
+FASHION_MNIST100 = "fashion_mnist100"
+FASHION_MNIST1000 = "fashion_mnist1000"
+FASHION_MNIST2500 = "fashion_mnist2500"
+FASHION_MNIST5000 = "fashion_mnist5000"
+FASHION_MNIST10000 = "fashion_mnist10000"
 
-DATA_SETS = [MNIST_TEST, MNIST, FASHION_MNIST]
+
+DATA_SETS = [MNIST_TEST, MNIST, FASHION_MNIST, FASHION_MNIST10, FASHION_MNIST100, FASHION_MNIST1000, FASHION_MNIST2500,
+             FASHION_MNIST5000, FASHION_MNIST10000]
 
 # Parameter tuning
 PARAMTUNING_DIR = os.path.join(RESULT_DIR, "parametertuning")
@@ -152,7 +160,19 @@ def load_data(data_identifier):
     elif data_identifier == MNIST_TEST:
         return mnist.load_mnist_data(all_data=False)
     elif data_identifier == FASHION_MNIST:
-        return mnist.load_fashion_mnist_data()
+        return mnist.load_fashion_mnist_data(all_data=True)
+    elif data_identifier == FASHION_MNIST10:
+        return mnist.load_fashion_mnist_data(all_data=False, len_sample=10)
+    elif data_identifier == FASHION_MNIST100:
+        return mnist.load_fashion_mnist_data(all_data=False, len_sample=100)
+    elif data_identifier == FASHION_MNIST1000:
+        return mnist.load_fashion_mnist_data(all_data=False, len_sample=1000)
+    elif data_identifier == FASHION_MNIST2500:
+        return mnist.load_fashion_mnist_data(all_data=False, len_sample=2500)
+    elif data_identifier == FASHION_MNIST5000:
+        return mnist.load_fashion_mnist_data(all_data=False, len_sample=5000)
+    elif data_identifier == FASHION_MNIST5000:
+        return mnist.load_fashion_mnist_data(all_data=False, len_sample=10000)
     else:
         print("unsupported data identifier: " + data_identifier)
         print("Shutting down...")
@@ -161,6 +181,7 @@ def load_data(data_identifier):
 
 def _argparse():
     argparse = ArgumentParser('Script to run parametertuning and building block analysis of bh_tsne')
+    argparse.add_argument('-e', '--exact', action='store_true', default=False)
     argparse.add_argument('-d', '--data_set', choices=DATA_SETS, default=MNIST_TEST,
                           help="use one of the following available data identifiers: {}".format(str(DATA_SETS)))
     available_parameters = ["all"]
@@ -267,10 +288,19 @@ if __name__ == "__main__":
 
         argp = parser.parse_args(argv[1:])
 
+        print("Using exact tSNE" if argp.exact else "Using BH-tSNE")
+        exact = argp.exact
         print("Using data set: {}".format(argp.data_set))
         data_name = argp.data_set
         print("Using parameters: {}".format(argp.parameter_list))
         param_list = PARAM_DICT.keys() if "all" in argp.parameter_list else argp.parameter_list
+        # Remove theta if algorithm is exact!
+        if exact:
+            param_list = [x for x in param_list if x != 'theta']
+            if not param_list:
+                # if param_list is now empty, quit
+                print("Exact tsne cannot be run with theta parameter tuning!")
+                quit()
         if not argp.parametertuning and argp.y_init:
             print("Running y_init buildingblock test with initial embeddings: {}"
                   .format(get_supported_non_random_methods()))
@@ -286,25 +316,41 @@ if __name__ == "__main__":
         os.chdir(CWD)
 
         # initialize logging to file
-        init_logger()
+        # init_logger()
 
         ###########################################################
         #                       LOAD DATA                         #
         ###########################################################
 
-        data, _ = load_data(data_name)
+        data, labels = load_data(data_name)
 
         ###########################################################
         #                           DEBUG                         #
         ###########################################################
 
-        # bhtsne.debug_bh_tsne_pre(data)
+        bhtsne.debug_bh_tsne_pre(data)
+        quit()
         # bhtsne.debug_data_file("windows", 2500, 784)
-        # embedding_dict = bhtsne.debug_bh_tsne_post()
+        embedding_dict = bhtsne.debug_bh_tsne_post()
 
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+        for key in embedding_dict.keys():
+
+            sns.despine()
+            sns.set_style("white")
+            g = sns.scatterplot(x=embedding_dict[key][:, 0],
+                                y=embedding_dict[key][:, 1],
+                                hue=labels,
+                                legend="full",
+                                palette=sns.color_palette("bright"))
+            figure = g.get_figure()
+            figure.savefig(os.path.join("windows", "tsne-debug" + str(key[0])) + ".png", bbox_inches="tight")
+            plt.close(figure)
+            #plt.show()
         # sanity check of error
         # np.sum(embedding_array[:, 2])
-
+        quit()
         ###########################################################
         #                   RUN PARAMETER TUNING                  #
         ###########################################################

@@ -35,6 +35,7 @@ def sample_data(data, labels, num_samples=2500):
 
     return _sample_data, _sample_labels
 
+
 def load_mnist_data(all_data=True, dir_name=DEFAULT_DIR):
     if all_data:
         pickle_mnist = os.path.join(dir_name, 'mnist.pkl.gz')
@@ -63,7 +64,7 @@ def load_mnist_data(all_data=True, dir_name=DEFAULT_DIR):
         return mnist, label
 
 
-def load_fashion_mnist_data(all_data=True, dir_name=DEFAULT_DIR):
+def load_fashion_mnist_data(all_data=True, len_sample=2500, dir_name=DEFAULT_DIR):
     # init empty numpy arrays
 
     fashion_mnist_images = np.empty((0, 784))
@@ -101,7 +102,7 @@ def load_fashion_mnist_data(all_data=True, dir_name=DEFAULT_DIR):
     if all_data:
         return fashion_mnist_images, fashion_mnist_labels
     else:
-        return sample_data(fashion_mnist_images, fashion_mnist_labels, 2500)
+        return sample_data(fashion_mnist_images, fashion_mnist_labels, len_sample)
 
 
 def mnist_1d_to_2d(data, num_observations=70000, img_rows=28, img_cols=28):

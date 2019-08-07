@@ -87,13 +87,16 @@ BUILDING_BLOCK_DICT = {
     },
     "output_similarities":  {
         "student": 0,
-        "laplacian": 1
+        "chi": 1
     },
     "cost_function": {
-        "KL": 0
+        "KL": 0,
+        "RKL": 1,
+        "JS": 2
     },
     "optimization": {
-        "gradient_descent": 0
+        "gradient_descent": 0,
+        "genetic": 1
     }
 }
 
