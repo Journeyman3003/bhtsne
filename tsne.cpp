@@ -86,6 +86,8 @@ static double evaluateExactErrorRKL(double* P, double* Y, int N, int D, double* 
 static double evaluateExactErrorRKL(double* P, int N, double* Q);
 static double evaluateExactErrorJS(double* P, double* Y, int N, int D, double* costs);
 static double evaluateExactErrorJS(double* P, int N, double* Q);
+// helper to compute KL(Q||M)
+static double evaluateExactErrorJSQM(double* P, int N, double* Q);
 
 // BH approximated cost functions
 static double evaluateErrorKL(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
@@ -126,7 +128,6 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 
     // Allocate some memory
     double* dY    = (double*) malloc(N * no_dims * sizeof(double));
-	double* dY2 = (double*)malloc(N * no_dims * sizeof(double));
     double* uY    = (double*) malloc(N * no_dims * sizeof(double));
     double* gains = (double*) malloc(N * no_dims * sizeof(double));
     if(dY == NULL || uY == NULL || gains == NULL) { printf("Memory allocation failed!\n"); exit(1); }
@@ -277,9 +278,11 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 			switch (cost_function) {
 			case 1:
 				computeExactGradientRKL(P, Y, N, no_dims, dY);
+				//approximateExactGradient(P, Y, N, no_dims, dY, evaluateExactErrorRKL);
 				break;
 			case 2:
 				computeExactGradientJS(P, Y, N, no_dims, dY);
+				//approximateExactGradient(P, Y, N, no_dims, dY, evaluateExactErrorJS);
 				break;
 			default:
 				switch (output_similarities) {
@@ -287,8 +290,8 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 					computeExactGradientKLChiSq(P, Y, N, no_dims, dY);
 					break;
 				default:
-					//computeExactGradientKL(P, Y, N, no_dims, dY);
-					approximateExactGradient(P, Y, N, no_dims, dY, evaluateExactErrorKL);
+					computeExactGradientKL(P, Y, N, no_dims, dY);
+					//approximateExactGradient(P, Y, N, no_dims, dY, evaluateExactErrorKL);
 				}
 			}
 		}
@@ -601,6 +604,52 @@ static void computeExactGradientKL(double* P, double* Y, int N, int D, double* d
 // Compute gradient of the t-SNE cost function (KL - ChiSq - exact)
 void computeExactGradientKLChiSq(double* P, double* Y, int N, int D, double* dC)
 {
+	// Make sure the current gradient contains zeros
+	for (int i = 0; i < N * D; i++) dC[i] = 0.0;
+
+	// Compute the Euclidean distance matrix
+	double* DD = (double*)malloc(N * N * sizeof(double));
+	if (DD == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	computeEuclideanDistance(Y, N, D, DD, false);
+
+	// Compute Q-matrix and normalization sum
+	double* Q = (double*)malloc(N * N * sizeof(double));
+	if (Q == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	double sum_Q = .0;
+	int nN = 0;
+	for (int n = 0; n < N; n++) {
+		for (int m = 0; m < N; m++) {
+			if (n != m) {
+				Q[nN + m] = exp(-0.5 * DD[nN + m]);
+				sum_Q += Q[nN + m];
+			}
+		}
+		nN += N;
+	}
+
+	for (int i = 0; i < N * N; i++) Q[i] /= sum_Q;
+
+	// Perform the computation of the gradient
+	nN = 0;
+	int nD = 0;
+	for (int n = 0; n < N; n++) {
+		int mD = 0;
+		for (int m = 0; m < N; m++) {
+			if (n != m) { 
+				double mult = (P[nN + m] - Q[nN + m]) / DD[nN + m];
+				for (int d = 0; d < D; d++) {
+					dC[nD + d] += (Y[nD + d] - Y[mD + d]) * mult;
+				}
+			}
+			mD += D;
+		}
+		nN += N;
+		nD += D;
+	}
+
+	// Free memory
+	free(DD); DD = NULL;
+	free(Q);  Q = NULL;
 }
 
 // Compute gradient of the t-SNE cost function (RKL - exact)
@@ -659,6 +708,54 @@ void computeExactGradientRKL(double* P, double* Y, int N, int D, double* dC)
 // Compute gradient of the t-SNE cost function (JS - exact)
 void computeExactGradientJS(double* P, double* Y, int N, int D, double* dC)
 {
+	// Make sure the current gradient contains zeros
+	for (int i = 0; i < N * D; i++) dC[i] = 0.0;
+
+	// Compute the squared Euclidean distance matrix
+	double* DD = (double*)malloc(N * N * sizeof(double));
+	if (DD == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	computeEuclideanDistance(Y, N, D, DD, true);
+
+	// Compute Q-matrix and normalization sum
+	double* Q = (double*)malloc(N * N * sizeof(double));
+	if (Q == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	double sum_Q = .0;
+	int nN = 0;
+	for (int n = 0; n < N; n++) {
+		for (int m = 0; m < N; m++) {
+			if (n != m) {
+				Q[nN + m] = 1 / (1 + DD[nN + m]);
+				sum_Q += Q[nN + m];
+			}
+		}
+		nN += N;
+	}
+
+	for (int i = 0; i < N * N; i++) Q[i] /= sum_Q;
+
+	double cKLQM = evaluateExactErrorJSQM(P, N, Q);
+
+	// Perform the computation of the gradient
+	nN = 0;
+	int nD = 0;
+	for (int n = 0; n < N; n++) {
+		int mD = 0;
+		for (int m = 0; m < N; m++) {
+			if (n != m) {
+				double mult = (log((.5 * P[nN + m] + .5 * Q[nN + m] + FLT_MIN) / (Q[nN + m] + FLT_MIN)) + cKLQM) * Q[nN + m] * Q[nN + m] * sum_Q;
+				for (int d = 0; d < D; d++) {
+					dC[nD + d] += (Y[nD + d] - Y[mD + d]) * mult;
+				}
+			}
+			mD += D;
+		}
+		nN += N;
+		nD += D;
+	}
+
+	// Free memory
+	free(DD); DD = NULL;
+	free(Q);  Q = NULL;
 }
 
 void approximateExactGradient(double* P, double* Y, int N, int D, double* dC, double costFunc(double*, int, double*))
@@ -824,7 +921,44 @@ static double evaluateExactErrorKL(double* P, int N, double* Q)
 // Evaluate t-SNE cost function (KL - ChiSq Q - exactly)
 static double evaluateExactErrorKLChiSq(double* P, double* Y, int N, int D, double* costs)
 {
-	return 0.0;
+	// Compute the Euclidean distance matrix
+	double* DD = (double*)malloc(N * N * sizeof(double));
+	if (DD == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	computeEuclideanDistance(Y, N, D, DD, false);
+
+	// Compute Q-matrix and normalization sum
+	double* Q = (double*)malloc(N * N * sizeof(double));
+	if (Q == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	double sum_Q = .0;
+	int nN = 0;
+	for (int n = 0; n < N; n++) {
+		for (int m = 0; m < N; m++) {
+			if (n != m) {
+				Q[nN + m] = exp(-0.5 * DD[nN + m]);
+				sum_Q += Q[nN + m];
+			}
+		}
+		nN += N;
+	}
+
+	for (int i = 0; i < N * N; i++) Q[i] /= sum_Q;
+
+	// Sum t-SNE error
+	double C = .0;
+	// i = Data Point i
+	for (int i = 0; i < N; i++) {
+		// j = neighboring point index
+		for (int j = 0; j < N; j++) {
+			//write to costs
+			costs[i] += P[i * N + j] * log((P[i * N + j] + FLT_MIN) / (Q[i * N + j] + FLT_MIN));
+		}
+		C += costs[i];
+	}
+
+	// Clean up memory
+	free(DD);
+	free(Q);
+	return C;
 }
 
 // Evaluate t-SNE cost function (RKL - exactly)
@@ -919,14 +1053,14 @@ double evaluateExactErrorJS(double* P, double* Y, int N, int D, double* costs)
 		// j = neighboring point index
 		for (int j = 0; j < N; j++) {
 
-			// consider dropping the 2 factor
+			// dropped the 2 before each cost computation as it just liearly scales the costs
 			// KL(P||M)
 			// write to costs
-			costs[i] += 2 * P[i * N + j] * log((P[i * N + j] + FLT_MIN) / (0.5 * P[i * N + j] + 0.5 * Q[i * N + j] + FLT_MIN));
+			costs[i] += P[i * N + j] * log((P[i * N + j] + FLT_MIN) / (0.5 * P[i * N + j] + 0.5 * Q[i * N + j] + FLT_MIN));
 
 			// KL(Q||M)
 			// write to costs
-			costs[i] += 2 * Q[i * N + j] * log((Q[i * N + j] + FLT_MIN) / (0.5 * P[i * N + j] + 0.5 * Q[i * N + j] + FLT_MIN));
+			costs[i] += Q[i * N + j] * log((Q[i * N + j] + FLT_MIN) / (0.5 * P[i * N + j] + 0.5 * Q[i * N + j] + FLT_MIN));
 		}
 		C += costs[i];
 	}
@@ -941,10 +1075,47 @@ double evaluateExactErrorJS(double* P, double* Y, int N, int D, double* costs)
 // this version gets a precomputed Q array
 double evaluateExactErrorJS(double* P, int N, double* Q)
 {
-	return 0.0;
+	// Sum t-SNE error
+	double C = .0;
+	// i = Data Point i
+	for (int i = 0; i < N; i++) {
+		// j = neighboring point index
+		for (int j = 0; j < N; j++) {
+			// dropped the 2 before each cost computation as it just liearly scales the costs
+			// KL(P||M)
+			// write to costs
+			C += P[i * N + j] * log((P[i * N + j] + FLT_MIN) / (0.5 * P[i * N + j] + 0.5 * Q[i * N + j] + FLT_MIN));
+
+			// KL(Q||M)
+			// write to costs
+			C += Q[i * N + j] * log((Q[i * N + j] + FLT_MIN) / (0.5 * P[i * N + j] + 0.5 * Q[i * N + j] + FLT_MIN));
+		}
+	}
+	return C;
 }
 
-// Evaluate t-SNE cost function (approximately)
+// Evaluate t-SNE cost function (JS - exactly)
+// this version is a helper to compute KL(Q||M)
+double evaluateExactErrorJSQM(double* P, int N, double* Q)
+{
+	// Sum t-SNE error
+	double C = .0;
+	// i = Data Point i
+	for (int i = 0; i < N; i++) {
+		// j = neighboring point index
+		for (int j = 0; j < N; j++) {
+
+			// dropped the 2 before each cost computation as it just liearly scales the costs
+			// KL(Q||M)
+			C += Q[i * N + j] * log((Q[i * N + j] + FLT_MIN) / (0.5 * P[i * N + j] + 0.5 * Q[i * N + j] + FLT_MIN));
+		}
+	}
+
+	// Clean up memory
+	return C;
+}
+
+// Evaluate t-SNE cost function (KL - approximately)
 static double evaluateErrorKL(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs)
 {
 
@@ -979,13 +1150,13 @@ static double evaluateErrorKL(unsigned int* row_P, unsigned int* col_P, double* 
     return C;
 }
 
-
+// Evaluate t-SNE cost function (KL- ChiSq - approximately)
 double evaluateErrorKLChiSq(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs)
 {
 	return 0.0;
 }
 
-// Evaluate t-SNE cost function (approximately)
+// Evaluate t-SNE cost function (RKL - approximately)
 static double evaluateErrorRKL(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs)
 {
 
@@ -1040,6 +1211,7 @@ static double evaluateErrorRKL(unsigned int* row_P, unsigned int* col_P, double*
 	return C;
 }
 
+// Evaluate t-SNE cost function (JS - approximately)
 double evaluateErrorJS(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs)
 {
 	return 0.0;

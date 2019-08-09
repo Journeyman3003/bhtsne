@@ -121,8 +121,12 @@ if __name__ == '__main__':
     # create_initial_solutions("fashion_mnist", fashion_data)
 
     # FASHION_MNIST2500
-    fashion_mnist2500_data, _ = mnist.load_fashion_mnist_data(all_data=False)
-    create_initial_solutions("fashion_mnist2500", fashion_mnist2500_data)
+    # fashion_mnist2500_data, _ = mnist.load_fashion_mnist_data(all_data=False)
+    # create_initial_solutions("fashion_mnist2500", fashion_mnist2500_data)
+
+    # FASHION_MNIST100 (debug)
+    fashion_mnist100_data, _ = mnist.load_fashion_mnist_data(all_data=False, len_sample=100)
+    create_initial_solutions("fashion_mnist100", fashion_mnist100_data)
 
 
 

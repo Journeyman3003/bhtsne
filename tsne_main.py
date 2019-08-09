@@ -37,7 +37,7 @@ DATA_SETS = [MNIST_TEST, MNIST, FASHION_MNIST, FASHION_MNIST10, FASHION_MNIST100
              FASHION_MNIST5000, FASHION_MNIST10000]
 
 # Parameter tuning
-PARAMTUNING_DIR = os.path.join(RESULT_DIR, "parametertuning")
+PARAMTUNING_DIR = "parametertuning"
 
 TMAX_TUNING_DIR = "iterations"
 PERPLEXITY_TUNING_DIR = "perplexity"
@@ -54,17 +54,9 @@ MOMENTUM_SWITCH_TUNING_DIR = "momentumswitch"
 INIT = os.path.join(CWD, "initial_solutions")
 
 # Building block experiments
-BUILDINGBLOCK_DIR = os.path.join(RESULT_DIR, "buildingblocks")
+BUILDINGBLOCK_DIR = "buildingblocks"
 
 INITIAL_EMBEDDING_DIR = os.path.join(BUILDINGBLOCK_DIR, "initial_embeddings")
-# not needed
-INITIAL_PCA_DIR = os.path.join(INITIAL_EMBEDDING_DIR, "pca")
-INITIAL_LLE_DIR = os.path.join(INITIAL_EMBEDDING_DIR, "lle")
-
-HIGH_DIM_DISTRIBUTION_DIR = os.path.join(BUILDINGBLOCK_DIR, "high_dimensional_distribution")
-LOW_DIM_DISTRIBUTION_DIR = os.path.join(BUILDINGBLOCK_DIR, "low_dimensional_distribution")
-COST_DIR = os.path.join(BUILDINGBLOCK_DIR, "cost_function")
-OPIMIZATION_DIR = os.path.join(BUILDINGBLOCK_DIR, "optimization_strategy")
 
 LOGGING_DIR = os.path.join(CWD, "logging")
 DAY = datetime.now().strftime("%d-%m-%Y")
@@ -111,13 +103,25 @@ PARAM_DICT = {
 
 def init_directories():
     try:
-        os.makedirs(PARAMTUNING_DIR)
+        os.makedirs(os.path.join(RESULT_DIR, "tSNE", PARAMTUNING_DIR))
     except FileExistsError:
         # directory already exists
         pass
 
     try:
-        os.makedirs(BUILDINGBLOCK_DIR)
+        os.makedirs(os.path.join(RESULT_DIR, "BHtSNE", PARAMTUNING_DIR))
+    except FileExistsError:
+        # directory already exists
+        pass
+
+    try:
+        os.makedirs(os.path.join(RESULT_DIR, "BHtSNE", BUILDINGBLOCK_DIR))
+    except FileExistsError:
+        # directory already exists
+        pass
+
+    try:
+        os.makedirs(os.path.join(RESULT_DIR, "BHtSNE", BUILDINGBLOCK_DIR))
     except FileExistsError:
         # directory already exists
         pass
@@ -290,6 +294,8 @@ if __name__ == "__main__":
 
         print("Using exact tSNE" if argp.exact else "Using BH-tSNE")
         exact = argp.exact
+        algorithm = "tSNE" if exact else "BHtSNE"
+        algorithm_dir = os.path.join(RESULT_DIR, algorithm)
         print("Using data set: {}".format(argp.data_set))
         data_name = argp.data_set
         print("Using parameters: {}".format(argp.parameter_list))
@@ -307,7 +313,8 @@ if __name__ == "__main__":
         else:
             print("Using initial embeddings: {}".format(argp.initial_embedding))
         initial_embedding = argp.initial_embedding
-        print("Using base directory: {}".format(str(PARAMTUNING_DIR) if argp.parametertuning else BUILDINGBLOCK_DIR))
+        operation_dir = os.path.join(algorithm_dir, PARAMTUNING_DIR if argp.parametertuning else BUILDINGBLOCK_DIR)
+        print("Using base directory: {}".format(str(operation_dir)))
 
         # initialize directories
         init_directories()
@@ -328,29 +335,15 @@ if __name__ == "__main__":
         #                           DEBUG                         #
         ###########################################################
 
-        bhtsne.debug_bh_tsne_pre(data)
-        quit()
+        # bhtsne.debug_bh_tsne_pre(data)
+        # quit()
         # bhtsne.debug_data_file("windows", 2500, 784)
-        embedding_dict = bhtsne.debug_bh_tsne_post()
+        # embedding_dict = bhtsne.debug_bh_tsne_post()
+        # bhtsne.plot_bh_tsne_post(embedding_dict, labels)
 
-        import seaborn as sns
-        import matplotlib.pyplot as plt
-        for key in embedding_dict.keys():
-
-            sns.despine()
-            sns.set_style("white")
-            g = sns.scatterplot(x=embedding_dict[key][:, 0],
-                                y=embedding_dict[key][:, 1],
-                                hue=labels,
-                                legend="full",
-                                palette=sns.color_palette("bright"))
-            figure = g.get_figure()
-            figure.savefig(os.path.join("windows", "tsne-debug" + str(key[0])) + ".png", bbox_inches="tight")
-            plt.close(figure)
-            #plt.show()
         # sanity check of error
         # np.sum(embedding_array[:, 2])
-        quit()
+        # quit()
         ###########################################################
         #                   RUN PARAMETER TUNING                  #
         ###########################################################
@@ -358,10 +351,19 @@ if __name__ == "__main__":
         # For each Data set and parameter, perform tsne 5 times to have some reliable data
         if argp.parametertuning:
             for param in param_list:
-                tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
-                              data_result_subdirectory=data_name,
-                              result_base_dir=os.path.join(PARAMTUNING_DIR, PARAM_DICT[param][1]),
-                              initial_embedding_method=initial_embedding)
+                if exact:
+                    """
+                    pass an additional theta=0.0 if running exact tSne
+                    """
+                    tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
+                                  data_result_subdirectory=data_name,
+                                  result_base_dir=os.path.join(operation_dir, PARAM_DICT[param][1]),
+                                  initial_embedding_method=initial_embedding, theta=0.0)
+                else:
+                    tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
+                                  data_result_subdirectory=data_name,
+                                  result_base_dir=os.path.join(operation_dir, PARAM_DICT[param][1]),
+                                  initial_embedding_method=initial_embedding)
 
         ###########################################################
         #                    INITIAL EMBEDDINGS                   #
@@ -369,10 +371,19 @@ if __name__ == "__main__":
         elif argp.y_init:
             for param in param_list:
                 for method in get_supported_non_random_methods():
-                    tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
-                                  data_result_subdirectory=data_name,
-                                  result_base_dir=os.path.join(INITIAL_EMBEDDING_DIR, method, PARAM_DICT[param][1]),
-                                  initial_embedding_method=method)
+                    if exact:
+                        """
+                        pass an additional theta=0.0 if running exact tSne
+                        """
+                        tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
+                                      data_result_subdirectory=data_name,
+                                      result_base_dir=os.path.join(INITIAL_EMBEDDING_DIR, method, PARAM_DICT[param][1]),
+                                      initial_embedding_method=method, theta=0.0)
+                    else:
+                        tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
+                                      data_result_subdirectory=data_name,
+                                      result_base_dir=os.path.join(INITIAL_EMBEDDING_DIR, method, PARAM_DICT[param][1]),
+                                      initial_embedding_method=method,)
 
         ###########################################################
         #                RUN BUILDINGBLOCK ANALYSIS               #
@@ -392,10 +403,12 @@ if __name__ == "__main__":
             directory = os.path.join("-".join([x[0] for x in modified_buildingblocks]),
                                      "-".join([x[1] for x in modified_buildingblocks]))
             kwargs = {x[0]: bhtsne.BUILDING_BLOCK_DICT[x[0]][x[1]] for x in building_blocks}
+            if exact:
+                kwargs['theta'] = 0.0
             for param in param_list:
                 tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
                               data_result_subdirectory=data_name,
-                              result_base_dir=os.path.join(BUILDINGBLOCK_DIR, directory, PARAM_DICT[param][1]),
+                              result_base_dir=os.path.join(operation_dir, directory, PARAM_DICT[param][1]),
                               initial_embedding_method=initial_embedding, **kwargs)
 
         # skip zip attachment as it simply grows too big
