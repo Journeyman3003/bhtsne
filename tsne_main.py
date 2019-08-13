@@ -323,7 +323,7 @@ if __name__ == "__main__":
         os.chdir(CWD)
 
         # initialize logging to file
-        # init_logger()
+        init_logger()
 
         ###########################################################
         #                       LOAD DATA                         #
@@ -335,12 +335,12 @@ if __name__ == "__main__":
         #                           DEBUG                         #
         ###########################################################
 
-        bhtsne.debug_bh_tsne_pre(data)
-        quit()
+        #bhtsne.debug_bh_tsne_pre(data)
+        #quit()
         # bhtsne.debug_data_file("windows", 2500, 784)
-        embedding_dict = bhtsne.debug_bh_tsne_post()
-        bhtsne.plot_bh_tsne_post(embedding_dict, labels)
-        quit()
+        #embedding_dict = bhtsne.debug_bh_tsne_post()
+        #bhtsne.plot_bh_tsne_post(embedding_dict, labels)
+        #quit()
         # sanity check of error
         # np.sum(embedding_array[:, 2])
         # quit()
