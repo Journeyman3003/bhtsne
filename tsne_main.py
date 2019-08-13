@@ -335,12 +335,12 @@ if __name__ == "__main__":
         #                           DEBUG                         #
         ###########################################################
 
-        # bhtsne.debug_bh_tsne_pre(data)
-        # quit()
+        bhtsne.debug_bh_tsne_pre(data)
+        quit()
         # bhtsne.debug_data_file("windows", 2500, 784)
-        # embedding_dict = bhtsne.debug_bh_tsne_post()
-        # bhtsne.plot_bh_tsne_post(embedding_dict, labels)
-
+        embedding_dict = bhtsne.debug_bh_tsne_post()
+        bhtsne.plot_bh_tsne_post(embedding_dict, labels)
+        quit()
         # sanity check of error
         # np.sum(embedding_array[:, 2])
         # quit()
@@ -353,7 +353,7 @@ if __name__ == "__main__":
             for param in param_list:
                 if exact:
                     """
-                    pass an additional theta=0.0 if running exact tSne
+                    pass an additional theta=0.0 if running exact tSNE
                     """
                     tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
                                   data_result_subdirectory=data_name,
@@ -373,7 +373,7 @@ if __name__ == "__main__":
                 for method in get_supported_non_random_methods():
                     if exact:
                         """
-                        pass an additional theta=0.0 if running exact tSne
+                        pass an additional theta=0.0 if running exact tSNE
                         """
                         tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
                                       data_result_subdirectory=data_name,

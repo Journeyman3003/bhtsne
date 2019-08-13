@@ -364,18 +364,18 @@ def debug_bh_tsne_pre(data):
 
     tmp_dir_path = os.path.abspath(path_join(os.path.dirname(__file__), "windows",))
 
-    _initial_embedding = get_initial_embedding(data_name="fashion_mnist100",
+    _initial_embedding = get_initial_embedding(data_name="fashion_mnist2500",
                                                method_name="gaussian", i=1)
 
     init_bh_tsne(data, tmp_dir_path, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL_DIMENSIONS,
                  initial_solution=_initial_embedding,
-                 perplexity=20, learning_rate=DEFAULT_LEARNING_RATE, momentum=DEFAULT_MOMENTUM,
-                 final_momentum=DEFAULT_FINAL_MOMENTUM, theta=0.0, randseed=EMPTY_SEED,
+                 perplexity=50, learning_rate=DEFAULT_LEARNING_RATE, momentum=DEFAULT_MOMENTUM,
+                 final_momentum=DEFAULT_FINAL_MOMENTUM, theta=DEFAULT_THETA, randseed=EMPTY_SEED,
                  use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS, stop_lying_iter=DEFAULT_STOP_LYING_ITERATION,
                  restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
                  momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=1,
-                 input_similarities=DEFAULT_BUILDING_BLOCK_INDEX, output_similarities=1,
-                 cost_function=0, optimization=DEFAULT_BUILDING_BLOCK_INDEX)
+                 input_similarities=DEFAULT_BUILDING_BLOCK_INDEX, output_similarities=DEFAULT_BUILDING_BLOCK_INDEX,
+                 cost_function=1, optimization=DEFAULT_BUILDING_BLOCK_INDEX)
 
 
 def debug_data_file(workdir, sample_count, len_sample):

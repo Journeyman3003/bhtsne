@@ -172,10 +172,10 @@ SPTree::Node* SPTree::insertChild(Node* node, const double* point, unsigned int 
 }
 
 // Compute non-edge forces using Barnes-Hut algorithm
-void SPTree::computeNonEdgeForces(unsigned int point_index, double theta, double neg_f[], double* sum_Q)
+void SPTree::computeNonEdgeForcesKL(unsigned int point_index, double theta, double neg_f[], double* sum_Q)
 {
 	double* point = data + point_index * dimension;
-	computeNonEdgeForces(root, max_width * max_width, point, theta * theta, neg_f, sum_Q);
+	computeNonEdgeForcesKL(root, max_width * max_width, point, theta * theta, neg_f, sum_Q);
 }
 
 void SPTree::computeNonEdgeForcesRKL(unsigned int point_index, double theta, double* term_1, double* term_2, double* term_3, double* sum_Q,
@@ -186,16 +186,16 @@ void SPTree::computeNonEdgeForcesRKL(unsigned int point_index, double theta, dou
 	computeNonEdgeForcesRKL(root, max_width * max_width, point, point_index, theta * theta, term_1, term_2, term_3, sum_Q, row_P, col_P);
 }
 
-void SPTree::computeNonEdgeForcesRKLGradient(unsigned int point_index, double theta, double* sum_dist, double* sum_Esq_logE, double* sum_Esq, double* sum_Esq_dist_logE, double* sum_Esq_dist, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
+void SPTree::computeNonEdgeForcesRKLGradient(unsigned int point_index, double theta, double* term_1, double* term_2, double* term_3, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
 {
 	double* point = data + point_index * dimension;
 	// point index still required to determine blacklisted values
 	computeNonEdgeForcesRKLGradient(root, max_width * max_width, point, point_index, theta * theta, 
-									sum_dist, sum_Esq_logE, sum_Esq, sum_Esq_dist_logE, sum_Esq_dist, sum_Q, row_P, col_P);
+								    term_1, term_2, term_3, sum_Q, row_P, col_P);
 }
 
 // Compute non-edge forces using Barnes-Hut algorithm
-void SPTree::computeNonEdgeForces(Node* node, double max_width_sq, double* point, double theta_sq, double neg_f[], double* sum_Q)
+void SPTree::computeNonEdgeForcesKL(Node* node, double max_width_sq, double* point, double theta_sq, double neg_f[], double* sum_Q)
 {
 	// Make sure that we spend no time on self-interactions
 	if (node->point == point) return;
@@ -223,14 +223,15 @@ void SPTree::computeNonEdgeForces(Node* node, double max_width_sq, double* point
 		// Recursively apply Barnes-Hut to children
 		for (Node* child : node->children) {
 			if (child) {
-				computeNonEdgeForces(child, max_width_sq / 4.0, point, theta_sq, neg_f, sum_Q);
+				computeNonEdgeForcesKL(child, max_width_sq / 4.0, point, theta_sq, neg_f, sum_Q);
 			}
 		}
 	}
 }
 
 // Compute non-edge forces using Barnes-Hut algorithm for RKL objective
-void SPTree::computeNonEdgeForcesRKL(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq, double* term_1, double* term_2, double* term_3, double* sum_Q,
+void SPTree::computeNonEdgeForcesRKL(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq, 
+									 double* term_1, double* term_2, double* term_3, double* sum_Q,
 									 unsigned int* row_P, unsigned int* col_P) //row_p and col_p for blacklisted values)
 {
 	// Make sure that we spend no time on self-interactions
@@ -246,9 +247,6 @@ void SPTree::computeNonEdgeForcesRKL(Node* node, double max_width_sq, double* po
 	// Optimize (max_width / sqrt(D) < theta) by squaring and multiplying through by D
 	if (node->point || max_width_sq < theta_sq * D) {
 		// Compute and add t-SNE force between point and current node
-		D = 1.0 / (1.0 + D); // || E_ij^-1
-		double mult = node->size * D; // || node_size * E_ij^-1
-		*sum_Q += mult; // add to Z
 
 		unsigned int blacklist_count = 0;
 		for (unsigned int i = row_P[point_index]; i < row_P[point_index + 1]; i++) {
@@ -257,14 +255,19 @@ void SPTree::computeNonEdgeForcesRKL(Node* node, double max_width_sq, double* po
 			}
 		}
 
-		//term_1
-		*term_1 += mult * log(mult); // node_size * E_ij^-1 * log node_size * E_ij^-1
+		// non_blacklisted sum
+		D = 1.0 / (1.0 + D); // || E_ij^-1
+		double mult = node->size * D; // || node_size * E_ij^-1
+		*sum_Q += mult; // add to Z
 
-		//term_2 
-		*term_2 += mult; // node_size * E_ij^-1
+		// blacklisted sum
+		double mult_blacklisted = (node->size - blacklist_count) * D; // || node_size - blacklist_count * E_ij^-1
+		
+		*term_1 += mult * log(mult); // add to sum_j e_ij * log e_ij
 
-		//term_3
-		*term_3 += (node->size - blacklist_count) * D; // (node_size-blacklist) * E_ij^-1
+		*term_2 += mult; // add to sum_j e_ij 
+
+		*term_3 += mult_blacklisted; // add to sum_j e_ij (accounting for blacklisted values of j)
 	}
 	else {
 		// Recursively apply Barnes-Hut to children
@@ -276,7 +279,7 @@ void SPTree::computeNonEdgeForcesRKL(Node* node, double max_width_sq, double* po
 	}
 }
 
-void SPTree::computeNonEdgeForcesRKLGradient(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq, double* sum_dist, double* sum_Esq_logE, double* sum_Esq, double* sum_Esq_dist_logE, double* sum_Esq_dist, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
+void SPTree::computeNonEdgeForcesRKLGradient(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq, double* term_1, double* term_2, double* term_3, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
 {
 	// Make sure that we spend no time on self-interactions
 	if (node->point == point) return;
@@ -291,10 +294,10 @@ void SPTree::computeNonEdgeForcesRKLGradient(Node* node, double max_width_sq, do
 	// Optimize (max_width / sqrt(D) < theta) by squaring and multiplying through by D
 	if (node->point || max_width_sq < theta_sq * D) {
 		// Compute and add t-SNE force between point and current node
-		double E = 1.0 / (1.0 + D); // || E_ij^-1
+		D = 1.0 / (1.0 + D); // || E_ij^-1
 		// compute sum_Q
 		*sum_Q += node->size * D; // node_size * E_ij^-1 add to Z
-
+		
 		unsigned int blacklist_count = 0;
 		for (unsigned int i = row_P[point_index]; i < row_P[point_index + 1]; i++) {
 			for (unsigned int j = 0; j < node->indices.size(); j++) {
@@ -305,42 +308,26 @@ void SPTree::computeNonEdgeForcesRKLGradient(Node* node, double max_width_sq, do
 		//compute dimension-wise terms (i.e. all terms including (y_i-y_j))
 
 		for (unsigned int d = 0; d < dimension; d++) { 
-			// sum_dist
-			// no split w.r.t p required -> no blacklisting
-			sum_dist[d] += node->size * (point[d] - node->center_of_mass[d]); //sum(y_i - Y_j)
 
-			// sum_Esq_dist_logE
-			// no split w.r.t p required -> no blacklisting
-			sum_Esq_dist_logE[d] += node->size * (E * E * (point[d] - node->center_of_mass[d]) * log(E)); //sum((E_ij^-1))^2 * (y_i - y_j) * log(E))
+			double diff = point[d] - node->center_of_mass[d];
 
-			// sum_Esq_dist
-			// split w.r.t p required -> blacklisting!
-			sum_Esq_dist[d] += (node->size - blacklist_count) * (E * E * (point[d] - node->center_of_mass[d])); //sum((E_ij ^ -1)) ^ 2 * (y_i - y_j)
+			term_1[d] += (node->size - blacklist_count) * (log(FLT_MIN) * D * D * diff);
+			term_2[d] += (node->size) * log(D) * D * D * diff;
+			term_3[d] += (node->size) * D * D * diff; 
 		}
-
-		//compute dimension-unrelated terms (i.e. all terms excluding (y_i-y_j))
-		
-		// sum_Esq_logE
-		// no split w.r.t p required -> no blacklisting
-		*sum_Esq_logE += node->size * (E * E * log(E)); // sum((E_ij^-1)^2 * log E_ij^-1)
-
-		// sum_Esq
-		// split w.r.t p required -> blacklisting!
-		*sum_Esq += (node->size - blacklist_count) * (E * E); //sum((E_ij ^ -1) ^ 2)
-
 	}
 	else {
 		// Recursively apply Barnes-Hut to children
 		for (Node* child : node->children) {
 			if (child) {
-				computeNonEdgeForcesRKLGradient(child, max_width_sq / 4.0, point, point_index, theta_sq, sum_dist, sum_Esq_logE, sum_Esq, sum_Esq_dist_logE, sum_Esq_dist, sum_Q, row_P, col_P);
+				computeNonEdgeForcesRKLGradient(child, max_width_sq / 4.0, point, point_index, theta_sq, term_1, term_2, term_3, sum_Q, row_P, col_P);
 			}
 		}
 	}
 }
 
 // Computes edge forces
-void SPTree::computeEdgeForces(unsigned int* row_P, unsigned int* col_P, double* val_P, int N, double* pos_f)
+void SPTree::computeEdgeForcesKL(unsigned int* row_P, unsigned int* col_P, double* val_P, int N, double* pos_f)
 {
 
 	// Loop over all edges in the graph
