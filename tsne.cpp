@@ -61,6 +61,8 @@ static double randn();
 static void computeExactGradientKL(double* P, double* Y, int N, int D, double* dC);
 // using ChiSq distributed output similarities Q
 static void computeExactGradientKLChiSq(double* P, double* Y, int N, int D, double* dC);
+// using ChiSq distributed output similarities Q
+static void computeExactGradientKLStudentHalf(double* P, double* Y, int N, int D, double* dC);
 static void computeExactGradientRKL(double* P, double* Y, int N, int D, double* dC);
 static void computeExactGradientJS(double* P, double* Y, int N, int D, double* dC);
 
@@ -83,6 +85,8 @@ static double evaluateExactErrorKL(double* P, double* Y, int N, int D, double* c
 static double evaluateExactErrorKL(double* P, int N, double* Q);
 // using ChiSq distributed output similarities Q
 static double evaluateExactErrorKLChiSq(double* P, double* Y, int N, int D, double* costs);
+// using ChiSq distributed output similarities Q
+static double evaluateExactErrorKLStudentHalf(double* P, double* Y, int N, int D, double* costs);
 static double evaluateExactErrorRKL(double* P, double* Y, int N, int D, double* costs);
 static double evaluateExactErrorRKL(double* P, int N, double* Q);
 static double evaluateExactErrorJS(double* P, double* Y, int N, int D, double* costs);
@@ -650,6 +654,10 @@ void computeExactGradientKLChiSq(double* P, double* Y, int N, int D, double* dC)
 	free(Q);  Q = NULL;
 }
 
+void computeExactGradientKLStudentHalf(double* P, double* Y, int N, int D, double* dC)
+{
+}
+
 // Compute gradient of the t-SNE cost function (RKL - exact)
 void computeExactGradientRKL(double* P, double* Y, int N, int D, double* dC)
 {
@@ -939,6 +947,47 @@ static double evaluateExactErrorKLChiSq(double* P, double* Y, int N, int D, doub
 		nN += N;
 	}
 
+	for (int i = 0; i < N * N; i++) Q[i] /= sum_Q;
+
+	// Sum t-SNE error
+	double C = .0;
+	// i = Data Point i
+	for (int i = 0; i < N; i++) {
+		// j = neighboring point index
+		for (int j = 0; j < N; j++) {
+			//write to costs
+			costs[i] += P[i * N + j] * log((P[i * N + j] + FLT_MIN) / (Q[i * N + j] + FLT_MIN));
+		}
+		C += costs[i];
+	}
+
+	// Clean up memory
+	free(DD);
+	free(Q);
+	return C;
+}
+
+double evaluateExactErrorKLStudentHalf(double* P, double* Y, int N, int D, double* costs)
+{
+	// Compute the squared Euclidean distance matrix
+	double* DD = (double*)malloc(N * N * sizeof(double));
+	double* Q = (double*)malloc(N * N * sizeof(double));
+	if (DD == NULL || Q == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	computeEuclideanDistance(Y, N, D, DD, true);
+
+	// Compute Q-matrix and normalization sum
+	int nN = 0;
+	double sum_Q = DBL_MIN;
+	for (int n = 0; n < N; n++) {
+		for (int m = 0; m < N; m++) {
+			if (n != m) {
+				Q[nN + m] = pow(1 + 2 * DD[nN + m], -3/4);
+				sum_Q += Q[nN + m];
+			}
+			else Q[nN + m] = DBL_MIN;
+		}
+		nN += N;
+	}
 	for (int i = 0; i < N * N; i++) Q[i] /= sum_Q;
 
 	// Sum t-SNE error

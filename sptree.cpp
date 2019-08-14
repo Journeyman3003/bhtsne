@@ -194,6 +194,22 @@ void SPTree::computeNonEdgeForcesRKLGradient(unsigned int point_index, double th
 								    term_1, term_2, term_3, sum_Q, row_P, col_P);
 }
 
+void SPTree::computeNonEdgeForcesJS(unsigned int point_index, double theta, double* term_1, double* term_2, double* term_3, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
+{
+	double* point = data + point_index * dimension;
+	// point index still required to determine blacklisted values
+	computeNonEdgeForcesJS(root, max_width * max_width, point, point_index, theta * theta, term_1, term_2, term_3, sum_Q, row_P, col_P);
+
+}
+
+void SPTree::computeNonEdgeForcesJSGradient(unsigned int point_index, double theta, double* term_1, double* term_2, double* term_3, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
+{
+	double* point = data + point_index * dimension;
+	// point index still required to determine blacklisted values
+	computeNonEdgeForcesJSGradient(root, max_width * max_width, point, point_index, theta * theta,
+								   term_1, term_2, term_3, sum_Q, row_P, col_P);
+}
+
 // Compute non-edge forces using Barnes-Hut algorithm
 void SPTree::computeNonEdgeForcesKL(Node* node, double max_width_sq, double* point, double theta_sq, double neg_f[], double* sum_Q)
 {
@@ -324,6 +340,14 @@ void SPTree::computeNonEdgeForcesRKLGradient(Node* node, double max_width_sq, do
 			}
 		}
 	}
+}
+
+void SPTree::computeNonEdgeForcesJS(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq, double* term_1, double* term_2, double* term_3, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
+{
+}
+
+void SPTree::computeNonEdgeForcesJSGradient(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq, double* term_1, double* term_2, double* term_3, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
+{
 }
 
 // Computes edge forces

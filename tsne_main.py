@@ -30,11 +30,12 @@ FASHION_MNIST100 = "fashion_mnist100"
 FASHION_MNIST1000 = "fashion_mnist1000"
 FASHION_MNIST2500 = "fashion_mnist2500"
 FASHION_MNIST5000 = "fashion_mnist5000"
+FASHION_MNIST7000 = "fashion_mnist7000"
 FASHION_MNIST10000 = "fashion_mnist10000"
 
 
 DATA_SETS = [MNIST_TEST, MNIST, FASHION_MNIST, FASHION_MNIST10, FASHION_MNIST100, FASHION_MNIST1000, FASHION_MNIST2500,
-             FASHION_MNIST5000, FASHION_MNIST10000]
+             FASHION_MNIST5000, FASHION_MNIST7000, FASHION_MNIST10000]
 
 # Parameter tuning
 PARAMTUNING_DIR = "parametertuning"
@@ -175,6 +176,8 @@ def load_data(data_identifier):
         return mnist.load_fashion_mnist_data(all_data=False, len_sample=2500)
     elif data_identifier == FASHION_MNIST5000:
         return mnist.load_fashion_mnist_data(all_data=False, len_sample=5000)
+    elif data_identifier == FASHION_MNIST5000:
+        return mnist.load_fashion_mnist_data(all_data=False, len_sample=7000)
     elif data_identifier == FASHION_MNIST5000:
         return mnist.load_fashion_mnist_data(all_data=False, len_sample=10000)
     else:
