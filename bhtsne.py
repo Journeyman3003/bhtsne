@@ -88,7 +88,8 @@ BUILDING_BLOCK_DICT = {
     },
     "output_similarities":  {
         "student": 0,
-        "chi": 1
+        "chi": 1,
+        "studenthalf": 2
     },
     "cost_function": {
         "KL": 0,
@@ -357,25 +358,25 @@ def read_bh_tsne_result(file_abspath):
 #                                               DEBUG CODE                                                            #
 #######################################################################################################################
 
-def debug_bh_tsne_pre(data):
+def debug_bh_tsne_pre(data, data_name):
     """
     debug TSNE pre: just write the data matrix into directory windows for windows execution
     """
 
     tmp_dir_path = os.path.abspath(path_join(os.path.dirname(__file__), "windows",))
 
-    _initial_embedding = get_initial_embedding(data_name="fashion_mnist2500",
+    _initial_embedding = get_initial_embedding(data_name=data_name,
                                                method_name="gaussian", i=1)
 
     init_bh_tsne(data, tmp_dir_path, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL_DIMENSIONS,
                  initial_solution=_initial_embedding,
-                 perplexity=50, learning_rate=DEFAULT_LEARNING_RATE, momentum=DEFAULT_MOMENTUM,
-                 final_momentum=DEFAULT_FINAL_MOMENTUM, theta=DEFAULT_THETA, randseed=EMPTY_SEED,
+                 perplexity=30, learning_rate=DEFAULT_LEARNING_RATE, momentum=DEFAULT_MOMENTUM,
+                 final_momentum=DEFAULT_FINAL_MOMENTUM, theta=0.0, randseed=EMPTY_SEED,
                  use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS, stop_lying_iter=DEFAULT_STOP_LYING_ITERATION,
                  restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
-                 momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=1,
-                 input_similarities=DEFAULT_BUILDING_BLOCK_INDEX, output_similarities=DEFAULT_BUILDING_BLOCK_INDEX,
-                 cost_function=1, optimization=DEFAULT_BUILDING_BLOCK_INDEX)
+                 momentum_switch_iter=1001, lying_factor=1,
+                 input_similarities=DEFAULT_BUILDING_BLOCK_INDEX, output_similarities=0,
+                 cost_function=2, optimization=DEFAULT_BUILDING_BLOCK_INDEX)
 
 
 def debug_data_file(workdir, sample_count, len_sample):

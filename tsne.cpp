@@ -73,6 +73,8 @@ static void approximateExactGradient(double* P, double* Y, int N, int D, double*
 static void computeApproxGradientKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
 // using ChiSq distributed output similarities Q
 static void computeApproxGradientKLChiSq(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
+// using Student0.5 distributed output similarities Q
+static void computeApproxGradientKLStudentHalf(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
 static void computeApproxGradientRKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
 static void computeApproxGradientJS(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
 
@@ -85,7 +87,7 @@ static double evaluateExactErrorKL(double* P, double* Y, int N, int D, double* c
 static double evaluateExactErrorKL(double* P, int N, double* Q);
 // using ChiSq distributed output similarities Q
 static double evaluateExactErrorKLChiSq(double* P, double* Y, int N, int D, double* costs);
-// using ChiSq distributed output similarities Q
+// using Student0.5 distributed output similarities Q
 static double evaluateExactErrorKLStudentHalf(double* P, double* Y, int N, int D, double* costs);
 static double evaluateExactErrorRKL(double* P, double* Y, int N, int D, double* costs);
 static double evaluateExactErrorRKL(double* P, int N, double* Q);
@@ -98,8 +100,14 @@ static double evaluateExactErrorJSQM(double* P, int N, double* Q);
 static double evaluateApproxErrorKL(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
 // using ChiSq distributed output similarities Q
 static double evaluateApproxErrorKLChiSq(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
+// using Student0.5 distributed output similarities Q
+static double evaluateApproxErrorKLStudentHalf(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
 static double evaluateApproxErrorRKL(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
 static double evaluateApproxErrorJS(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
+// helper to compute KL(P||M)
+//static double evaluateApproxErrorJSPM(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
+// helper to compute KL(Q||M)
+static double evaluateApproxErrorJSQM(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta);
 
 static void computeEuclideanDistance(double* X, int N, int D, double* DD, bool squared);
 static void updateEuclideanDistance(double* X, int N, int update_index, int D, double* DD, bool squared);
@@ -226,7 +234,6 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 
 	// Save results of iteration 0
 	double C = .0;
-	double C_compare = .0;
 	if (exact) {
 		switch (cost_function) {
 		case 1:
@@ -242,6 +249,9 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 			switch (output_similarities) {
 			case 1:
 				C = evaluateExactErrorKLChiSq(P, Y, N, no_dims, costs);
+				break;
+			case 2:
+				C = evaluateExactErrorKLStudentHalf(P, Y, N, no_dims, costs);
 				break;
 			default:
 				C = evaluateExactErrorKL(P, Y, N, no_dims, costs);
@@ -264,8 +274,12 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 			case 1:
 				C = evaluateApproxErrorKLChiSq(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
 				break;
+			case 2:
+				C = evaluateApproxErrorKLStudentHalf(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
+				break;
 			default:
 				C = evaluateApproxErrorKL(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
+				//C_compare = evaluateApproxErrorJS(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
 			}
 		}
 	}
@@ -295,6 +309,9 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 				case 1:
 					computeExactGradientKLChiSq(P, Y, N, no_dims, dY);
 					break;
+				case 2:
+					computeExactGradientKLStudentHalf(P, Y, N, no_dims, dY);
+					break;
 				default:
 					computeExactGradientKL(P, Y, N, no_dims, dY);
 					//approximateExactGradient(P, Y, N, no_dims, dY, evaluateExactErrorKL);
@@ -316,8 +333,12 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 				case 1:
 					computeApproxGradientKLChiSq(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
 					break;
+				case 2:
+					computeApproxGradientKLStudentHalf(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+					break;
 				default:
-					computeApproxGradientKL(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+					//computeApproxGradientKL(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+					approximateApproxGradient(row_P, col_P, val_P, Y, N, no_dims, dY, theta, evaluateApproxErrorKL);
 				}
 			}
 		}
@@ -364,6 +385,9 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 					case 1:
 						C = evaluateExactErrorKLChiSq(P, Y, N, no_dims, costs);
 						break;
+					case 2:
+						C = evaluateExactErrorKLStudentHalf(P, Y, N, no_dims, costs);
+						break;
 					default:
 						C = evaluateExactErrorKL(P, Y, N, no_dims, costs);
 					}
@@ -382,9 +406,12 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 					case 1:
 						C = evaluateApproxErrorKLChiSq(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
 						break;
+					case 2:
+						C = evaluateApproxErrorKLStudentHalf(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
+						break;
 					default:
 						C = evaluateApproxErrorKL(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
-						C_compare = evaluateApproxErrorRKL(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
+						//C_compare = evaluateApproxErrorJS(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
 					}
 				}
 			}
@@ -395,7 +422,7 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
             else {
                 total_time += (float) (end - start) / CLOCKS_PER_SEC;
                 printf("Iteration %d: %s error is %f (50 iterations in %4.2f seconds)\n", iter + 1, cost_function_name.c_str(), C, (float) (end - start) / CLOCKS_PER_SEC);
-				//printf("Iteration %d: RKL error would be %f (50 iterations in %4.2f seconds)\n", iter + 1, C_compare, (float)(end - start) / CLOCKS_PER_SEC);
+				//printf("Iteration %d: JS error would be %f (50 iterations in %4.2f seconds)\n", iter + 1, C_compare, (float)(end - start) / CLOCKS_PER_SEC);
 			}
 			//no matter whether iteration is 0 or % 50 == 0 or max_iter - 1, save the current results
 			save_data(Y, landmarks, costs, N, no_dims, iter + 1);
@@ -446,8 +473,102 @@ static void computeApproxGradientKL(unsigned int* inp_row_P, unsigned int* inp_c
 // Compute gradient of the t-SNE cost function (KL - ChiSq - using Barnes-Hut algorithm)
 void computeApproxGradientKLChiSq(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta)
 {
+	// Construct space-partitioning tree on current map
+	SPTree* tree = new SPTree(D, Y, N);
+
+	// Compute all terms required for t-SNE gradient
+	double sum_Q = .0;
+	double* pos_f = (double*)calloc(N * D, sizeof(double));
+	double* neg_f = (double*)calloc(N * D, sizeof(double));
+	if (pos_f == NULL || neg_f == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	
+	// compute Edge forces
+	unsigned int ind1 = 0;
+	unsigned int ind2 = 0;
+	for (unsigned int n = 0; n < N; n++) {
+		for (unsigned int i = inp_row_P[n]; i < inp_row_P[n + 1]; i++) {
+
+			// Compute pairwise distance and Q-value
+			double dist = 0.0;
+			ind2 = inp_col_P[i] * D;
+			for (unsigned int d = 0; d < D; d++) {
+				double diff = Y[ind1 + d] - Y[ind2 + d];
+				dist += diff * diff;
+			}
+
+			dist = sqrt(dist);
+
+			double mult = inp_val_P[i] / dist;
+
+			// Sum positive force
+			for (unsigned int d = 0; d < D; d++) {
+				double diff = Y[ind1 + d] - Y[ind2 + d];
+				pos_f[ind1 + d] += mult * diff;
+			}
+		}
+		ind1 += D;
+	}
+
+	for (int n = 0; n < N; n++) tree->computeNonEdgeForcesKL(n, theta, neg_f + n * D, &sum_Q);
+
+	// Compute final t-SNE gradient
+	for (int i = 0; i < N * D; i++) {
+		dC[i] = pos_f[i] - (neg_f[i] / sum_Q);
+	}
+	free(pos_f);
+	free(neg_f);
+	delete tree;
 }
 
+
+void computeApproxGradientKLStudentHalf(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta)
+{
+	// Construct space-partitioning tree on current map
+	SPTree* tree = new SPTree(D, Y, N);
+
+	// Compute all terms required for t-SNE gradient
+	double sum_Q = .0;
+	double* pos_f = (double*)calloc(N * D, sizeof(double));
+	double* neg_f = (double*)calloc(N * D, sizeof(double));
+	if (pos_f == NULL || neg_f == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	
+
+	// Loop over all edges in the graph
+	unsigned int ind1 = 0;
+	unsigned int ind2 = 0;
+	
+	for (unsigned int n = 0; n < N; n++) {
+		for (unsigned int i = inp_row_P[n]; i < inp_row_P[n + 1]; i++) {
+
+			// Compute pairwise distance and Q-value
+			double dist = 0.0;
+			ind2 = inp_col_P[i] * D;
+			for (unsigned int d = 0; d < D; d++) {
+				double diff = Y[ind1 + d] - Y[ind2 + d];
+				dist += diff * diff;
+			}
+			double mult = inp_val_P[i] / (1 + 2 * dist);
+
+			// Sum positive force
+			for (unsigned int d = 0; d < D; d++) {
+				double diff = Y[ind1 + d] - Y[ind2 + d];
+				pos_f[ind1 + d] += mult * diff;
+			}
+		}
+		ind1 += D;
+	}
+
+	for (int n = 0; n < N; n++) tree->computeNonEdgeForcesKLStudentHalf(n, theta, neg_f + n * D, &sum_Q);
+
+	// Compute final t-SNE gradient
+	for (int i = 0; i < N * D; i++) {
+		dC[i] = pos_f[i] - (neg_f[i] / sum_Q);
+	}
+	free(pos_f);
+	free(neg_f);
+	delete tree;
+
+}
 
 // Compute gradient of the t-SNE cost function (RKL - using Barnes-Hut algorithm)
 static void computeApproxGradientRKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta)
@@ -520,6 +641,63 @@ static void computeApproxGradientRKL(unsigned int* inp_row_P, unsigned int* inp_
 // Compute gradient of the t-SNE cost function (JS - using Barnes-Hut algorithm)
 void computeApproxGradientJS(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta)
 {
+
+	// First, compute cost CJSQM (inefficient in the current way)
+	//double* costs = (double*)calloc(N, sizeof(double));
+	double cJSQM = evaluateApproxErrorJSQM(inp_row_P, inp_col_P, inp_val_P, Y, N, D, theta);
+	//free(costs); costs = NULL;
+
+	// Construct space-partitioning tree on current map
+	SPTree* tree = new SPTree(D, Y, N);
+
+	// Compute all terms required for t-SNE gradient
+	double sum_Q = .0;
+
+	// depends on dimension d
+	double* term_1 = (double*)calloc(N * D, sizeof(double));
+	double* term_2 = (double*)calloc(N * D, sizeof(double));
+
+	if (term_1 == NULL || term_2 == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+
+	for (int n = 0; n < N; n++) tree->computeNonEdgeForcesJSGradient(n, theta, term_1 + n * D, term_2 + n * D, &sum_Q, 
+																	 inp_row_P, inp_col_P);
+
+	// Compute final t-SNE gradient nonedge forces
+	for (int n = 0; n < N; n++) {
+		for (int d = 0; d < D; d++) {
+			dC[n * D + d] = log(0.5) * term_1[n * D + d];
+			dC[n * D + d] += cJSQM * term_2[n * D + d];
+			dC[n * D + d] /= sum_Q;
+		}
+	}
+
+	// Compute final t-SNE gradient Edge forces
+	double* buff = (double*)calloc(D, sizeof(double));
+	int ind1, ind2;
+	double C = .0, E;
+	for (int n = 0; n < N; n++) {
+		ind1 = n * D;
+		for (int i = inp_row_P[n]; i < inp_row_P[n + 1]; i++) {
+			E = .0;
+			ind2 = inp_col_P[i] * D;
+			for (int d = 0; d < D; d++) buff[d] = Y[ind1 + d];
+			for (int d = 0; d < D; d++) buff[d] -= Y[ind2 + d];
+			for (int d = 0; d < D; d++) E += buff[d] * buff[d];
+			E = (1.0 / (1.0 + E));
+
+			// finally, add to gradient
+			for (int d = 0; d < D; d++) {
+				dC[n * D + d] += (log((0.5 * inp_val_P[n * D] + 0.5 * E / sum_Q) / (E / sum_Q)) + cJSQM) * E * E / sum_Q * buff[d];
+			}
+		}
+	}
+
+	// Cleanup memory
+	free(buff);
+	free(term_1); term_1 = NULL;
+	free(term_2); term_2 = NULL;
+	delete tree;
+
 }
 
 static void approximateApproxGradient(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D,
@@ -538,7 +716,7 @@ static void approximateApproxGradient(unsigned int* inp_row_P, unsigned int* inp
 
 			// increment Y[nD + d] by h
 			Y[n * D + d] += h;
-			dC[n * D + d] += costFunc(inp_row_P, inp_col_P, inp_val_P, Y, N, D, theta, costs);
+			dC[n * D + d] = costFunc(inp_row_P, inp_col_P, inp_val_P, Y, N, D, theta, costs);
 
 			// subtract Y[nD + d] with h
 			Y[n * D + d] -= (2 * h);
@@ -656,7 +834,52 @@ void computeExactGradientKLChiSq(double* P, double* Y, int N, int D, double* dC)
 
 void computeExactGradientKLStudentHalf(double* P, double* Y, int N, int D, double* dC)
 {
+	// Make sure the current gradient contains zeros
+	for (int i = 0; i < N * D; i++) dC[i] = 0.0;
+
+	// Compute the squared Euclidean distance matrix
+	double* DD = (double*)malloc(N * N * sizeof(double));
+	if (DD == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	computeEuclideanDistance(Y, N, D, DD, true);
+
+	// Compute Q-matrix and normalization sum
+	double* Q = (double*)malloc(N * N * sizeof(double));
+	if (Q == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	double sum_Q = .0;
+	int nN = 0;
+	for (int n = 0; n < N; n++) {
+		for (int m = 0; m < N; m++) {
+			if (n != m) {
+				Q[nN + m] = pow(1 + 2 * DD[nN + m], -3.0/4.0);
+				sum_Q += Q[nN + m];
+			}
+		}
+		nN += N;
+	}
+
+	// Perform the computation of the gradient
+	nN = 0;
+	int nD = 0;
+	for (int n = 0; n < N; n++) {
+		int mD = 0;
+		for (int m = 0; m < N; m++) {
+			if (n != m) {
+				double mult = (P[nN + m] - (Q[nN + m] / sum_Q)) * pow(Q[nN + m], 4.0/3.0);
+				for (int d = 0; d < D; d++) {
+					dC[nD + d] += (Y[nD + d] - Y[mD + d]) * mult;
+				}
+			}
+			mD += D;
+		}
+		nN += N;
+		nD += D;
+	}
+
+	// Free memory
+	free(DD); DD = NULL;
+	free(Q);  Q = NULL;
 }
+
 
 // Compute gradient of the t-SNE cost function (RKL - exact)
 void computeExactGradientRKL(double* P, double* Y, int N, int D, double* dC)
@@ -967,6 +1190,7 @@ static double evaluateExactErrorKLChiSq(double* P, double* Y, int N, int D, doub
 	return C;
 }
 
+// Evaluate t-SNE cost function (KL - Student (0.5) Q - exactly)
 double evaluateExactErrorKLStudentHalf(double* P, double* Y, int N, int D, double* costs)
 {
 	// Compute the squared Euclidean distance matrix
@@ -981,7 +1205,7 @@ double evaluateExactErrorKLStudentHalf(double* P, double* Y, int N, int D, doubl
 	for (int n = 0; n < N; n++) {
 		for (int m = 0; m < N; m++) {
 			if (n != m) {
-				Q[nN + m] = pow(1 + 2 * DD[nN + m], -3/4);
+				Q[nN + m] = pow(1 + 2 * DD[nN + m], -3.0/4.0);
 				sum_Q += Q[nN + m];
 			}
 			else Q[nN + m] = DBL_MIN;
@@ -1200,7 +1424,70 @@ static double evaluateApproxErrorKL(unsigned int* row_P, unsigned int* col_P, do
 // Evaluate t-SNE cost function (KL- ChiSq - approximately)
 double evaluateApproxErrorKLChiSq(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs)
 {
-	return 0.0;
+
+	// KL = P * log (P / Q)
+
+	// Get estimate of normalization term
+	SPTree* tree = new SPTree(D, Y, N);
+	double* buff = (double*)calloc(D, sizeof(double));
+	double sum_Q = .0;
+	for (int n = 0; n < N; n++) tree->computeNonEdgeForcesKLChiSq(n, theta, buff, &sum_Q);
+
+	// Loop over all edges to compute t-SNE error
+	int ind1, ind2;
+	double C = .0, Q;
+	for (int n = 0; n < N; n++) {
+		ind1 = n * D;
+		for (int i = row_P[n]; i < row_P[n + 1]; i++) {
+			Q = .0;
+			ind2 = col_P[i] * D;
+			for (int d = 0; d < D; d++) buff[d] = Y[ind1 + d];
+			for (int d = 0; d < D; d++) buff[d] -= Y[ind2 + d];
+			for (int d = 0; d < D; d++) Q += buff[d] * buff[d];
+			Q = exp(-0.5 * sqrt(D)) / sum_Q;
+			costs[n] += val_P[i] * log((val_P[i] + FLT_MIN) / (Q + FLT_MIN));
+		}
+		C += costs[n];
+	}
+
+	// Clean up memory
+	free(buff);
+	delete tree;
+	return C;
+}
+
+// Evaluate t-SNE cost function (KL- StudentHalf - approximately)
+double evaluateApproxErrorKLStudentHalf(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs)
+{
+	// KL = P * log (P / Q)
+
+// Get estimate of normalization term
+	SPTree* tree = new SPTree(D, Y, N);
+	double* buff = (double*)calloc(D, sizeof(double));
+	double sum_Q = .0;
+	for (int n = 0; n < N; n++) tree->computeNonEdgeForcesKLStudentHalf(n, theta, buff, &sum_Q);
+
+	// Loop over all edges to compute t-SNE error
+	int ind1, ind2;
+	double C = .0, Q;
+	for (int n = 0; n < N; n++) {
+		ind1 = n * D;
+		for (int i = row_P[n]; i < row_P[n + 1]; i++) {
+			Q = .0;
+			ind2 = col_P[i] * D;
+			for (int d = 0; d < D; d++) buff[d] = Y[ind1 + d];
+			for (int d = 0; d < D; d++) buff[d] -= Y[ind2 + d];
+			for (int d = 0; d < D; d++) Q += buff[d] * buff[d];
+			Q = exp(-0.5 * sqrt(D)) / sum_Q;
+			costs[n] += val_P[i] * log((val_P[i] + FLT_MIN) / (Q + FLT_MIN));
+		}
+		C += costs[n];
+	}
+
+	// Clean up memory
+	free(buff);
+	delete tree;
+	return C;
 }
 
 // Evaluate t-SNE cost function (RKL - approximately)
@@ -1261,7 +1548,96 @@ static double evaluateApproxErrorRKL(unsigned int* row_P, unsigned int* col_P, d
 // Evaluate t-SNE cost function (JS - approximately)
 double evaluateApproxErrorJS(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs)
 {
-	return 0.0;
+	// JS = P * log (P / (.5P + .5Q)) +  Q * log (Q / (.5P + .5Q))
+	
+
+	// Get estimate of normalization term
+	SPTree* tree = new SPTree(D, Y, N);
+	double sum_Q = .0;
+	double* term_1 = (double*)calloc(N, sizeof(double));
+
+	if (term_1 == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+
+	// Part 1: loop over all non-edges to compute term_1 
+	for (int n = 0; n < N; n++) {
+		tree->computeNonEdgeForcesJS(n, theta, term_1 + n, &sum_Q, row_P, col_P);
+	}
+
+	for (int n = 0; n < N; n++) {
+		//term_1[n] *= log(2) / sum_Q;
+		costs[n] += term_1[n] * log(2) / sum_Q;
+	}
+
+	// Part 2: compute all edge forces
+	double* buff = (double*)calloc(D, sizeof(double));
+	int ind1, ind2;
+	double C = .0, Q;
+	for (int n = 0; n < N; n++) {
+		ind1 = n * D;
+		// variable to store cost of point n
+		double Cn = .0;
+		for (int i = row_P[n]; i < row_P[n + 1]; i++) {
+			Q = .0;
+			ind2 = col_P[i] * D;
+			for (int d = 0; d < D; d++) buff[d] = Y[ind1 + d];
+			for (int d = 0; d < D; d++) buff[d] -= Y[ind2 + d];
+			for (int d = 0; d < D; d++) Q += buff[d] * buff[d];
+			Q = (1.0 / (1.0 + Q)) / sum_Q;
+			costs[n] += val_P[i] * log(val_P[i] / (0.5 * val_P[i] + 0.5 * Q)) + Q * log(Q / (0.5 * val_P[i] + 0.5 * Q));
+		}
+		C += costs[n];
+	}
+
+	// Clean up memory
+	free(term_1); term_1 = NULL;
+	delete tree;
+	return C;
+}
+
+double evaluateApproxErrorJSQM(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta)
+{
+	// JSQM = Q * log (Q / (.5P + .5Q))
+
+	// Get estimate of normalization term
+	SPTree* tree = new SPTree(D, Y, N);
+	double sum_Q = .0;
+	double C = .0;
+	double* term_1 = (double*)calloc(N, sizeof(double));
+
+	if (term_1 == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+
+	// Part 1: loop over all non-edges to compute term_1 
+	for (int n = 0; n < N; n++) {
+		tree->computeNonEdgeForcesJS(n, theta, term_1 + n, &sum_Q, row_P, col_P);
+	}
+
+	for (int n = 0; n < N; n++) {
+		//term_1[n] *= log(2) / sum_Q;
+		C += term_1[n] * log(2) / sum_Q;
+	}
+
+	// Part 2: compute all edge forces
+	double* buff = (double*)calloc(D, sizeof(double));
+	int ind1, ind2;
+	double  Q;
+	for (int n = 0; n < N; n++) {
+		ind1 = n * D;
+		for (int i = row_P[n]; i < row_P[n + 1]; i++) {
+			Q = .0;
+			ind2 = col_P[i] * D;
+			for (int d = 0; d < D; d++) buff[d] = Y[ind1 + d];
+			for (int d = 0; d < D; d++) buff[d] -= Y[ind2 + d];
+			for (int d = 0; d < D; d++) Q += buff[d] * buff[d];
+			Q = (1.0 / (1.0 + Q)) / sum_Q;
+			C += Q * log(Q / (0.5 * val_P[i] + 0.5 * Q));
+		}
+		//C += costs[n];
+	}
+
+	// Clean up memory
+	free(term_1); term_1 = NULL;
+	delete tree;
+	return C;
 }
 
 
@@ -1773,6 +2149,7 @@ static void symmetrizeMatrix(unsigned int** _row_P, unsigned int** _col_P, doubl
     free(offset); offset = NULL;
     free(row_counts); row_counts  = NULL;
 }
+
 
 // Compute squared Euclidean distance matrix
 static void computeEuclideanDistance(double* X, int N, int D, double* DD, bool squared) {

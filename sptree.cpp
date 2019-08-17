@@ -178,6 +178,20 @@ void SPTree::computeNonEdgeForcesKL(unsigned int point_index, double theta, doub
 	computeNonEdgeForcesKL(root, max_width * max_width, point, theta * theta, neg_f, sum_Q);
 }
 
+// Compute non-edge forces using Barnes-Hut algorithm (ChiSq Output Similarities)
+void SPTree::computeNonEdgeForcesKLChiSq(unsigned int point_index, double theta, double neg_f[], double* sum_Q)
+{
+	double* point = data + point_index * dimension;
+	computeNonEdgeForcesKLChiSq(root, max_width * max_width, point, theta * theta, neg_f, sum_Q);
+}
+
+// Compute non-edge forces using Barnes-Hut algorithm (Student0.5 Output Similarities)
+void SPTree::computeNonEdgeForcesKLStudentHalf(unsigned int point_index, double theta, double neg_f[], double* sum_Q)
+{
+	double* point = data + point_index * dimension;
+	computeNonEdgeForcesKLStudentHalf(root, max_width * max_width, point, theta * theta, neg_f, sum_Q);
+}
+
 void SPTree::computeNonEdgeForcesRKL(unsigned int point_index, double theta, double* term_1, double* term_2, double* term_3, double* sum_Q,
 									 unsigned int* row_P, unsigned int* col_P) //row_p and col_p for blacklisted values
 {
@@ -194,20 +208,20 @@ void SPTree::computeNonEdgeForcesRKLGradient(unsigned int point_index, double th
 								    term_1, term_2, term_3, sum_Q, row_P, col_P);
 }
 
-void SPTree::computeNonEdgeForcesJS(unsigned int point_index, double theta, double* term_1, double* term_2, double* term_3, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
+void SPTree::computeNonEdgeForcesJS(unsigned int point_index, double theta, double* term_1, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
 {
 	double* point = data + point_index * dimension;
 	// point index still required to determine blacklisted values
-	computeNonEdgeForcesJS(root, max_width * max_width, point, point_index, theta * theta, term_1, term_2, term_3, sum_Q, row_P, col_P);
+	computeNonEdgeForcesJS(root, max_width * max_width, point, point_index, theta * theta, term_1, sum_Q, row_P, col_P);
 
 }
 
-void SPTree::computeNonEdgeForcesJSGradient(unsigned int point_index, double theta, double* term_1, double* term_2, double* term_3, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
+void SPTree::computeNonEdgeForcesJSGradient(unsigned int point_index, double theta, double* term_1, double* term_2, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
 {
 	double* point = data + point_index * dimension;
 	// point index still required to determine blacklisted values
 	computeNonEdgeForcesJSGradient(root, max_width * max_width, point, point_index, theta * theta,
-								   term_1, term_2, term_3, sum_Q, row_P, col_P);
+								   term_1, term_2, sum_Q, row_P, col_P);
 }
 
 // Compute non-edge forces using Barnes-Hut algorithm
@@ -240,6 +254,74 @@ void SPTree::computeNonEdgeForcesKL(Node* node, double max_width_sq, double* poi
 		for (Node* child : node->children) {
 			if (child) {
 				computeNonEdgeForcesKL(child, max_width_sq / 4.0, point, theta_sq, neg_f, sum_Q);
+			}
+		}
+	}
+}
+
+void SPTree::computeNonEdgeForcesKLChiSq(Node* node, double max_width_sq, double* point, double theta_sq, double neg_f[], double* sum_Q)
+{
+	// Make sure that we spend no time on self-interactions
+	if (node->point == point) return;
+
+	// Compute distance between point and center-of-mass
+	double D = 0.0;
+	for (unsigned int d = 0; d < dimension; d++) {
+		double diff = point[d] - node->center_of_mass[d];
+		D += diff * diff; // || y_i - y_j ||^2
+	}
+
+	// Optimize (max_width / sqrt(D) < theta) by squaring and multiplying through by D
+	if (node->point || max_width_sq < theta_sq * D) {
+		// Compute and add t-SNE force between point and current node
+		double E = exp(-0.5 * sqrt(D)); // || E_ij
+		double mult = node->size * E; // || node_size * E_ij^-1
+		*sum_Q += mult; // add to Z
+		mult /= sqrt(D); // E_ij * 1/d_ij 
+		for (unsigned int d = 0; d < dimension; d++) { // split computation of SUM(q_ij * 1/d_ij * (y_i - y_j)) dimension-wise
+			double diff = point[d] - node->center_of_mass[d];
+			neg_f[d] += mult * diff;
+		}
+	}
+	else {
+		// Recursively apply Barnes-Hut to children
+		for (Node* child : node->children) {
+			if (child) {
+				computeNonEdgeForcesKLChiSq(child, max_width_sq / 4.0, point, theta_sq, neg_f, sum_Q);
+			}
+		}
+	}
+}
+
+void SPTree::computeNonEdgeForcesKLStudentHalf(Node* node, double max_width_sq, double* point, double theta_sq, double neg_f[], double* sum_Q)
+{
+	// Make sure that we spend no time on self-interactions
+	if (node->point == point) return;
+
+	// Compute distance between point and center-of-mass
+	double D = 0.0;
+	for (unsigned int d = 0; d < dimension; d++) {
+		double diff = point[d] - node->center_of_mass[d];
+		D += diff * diff; // || y_i - y_j ||^2
+	}
+
+	// Optimize (max_width / sqrt(D) < theta) by squaring and multiplying through by D
+	if (node->point || max_width_sq < theta_sq * D) {
+		// Compute and add t-SNE force between point and current node
+		double E = pow(1 + 2 * D, -3.0 / 4.0); // || E_ij
+		double mult = node->size * E; // || node_size * E_ij
+		*sum_Q += mult; // add to Z
+		mult *= 1 / (1 + 2 * D); // E_ij * e_ij^(4/3) 
+		for (unsigned int d = 0; d < dimension; d++) { // split computation of SUM(e_ij * e_ij^(4/3) * (y_i - y_j)) dimension-wise
+			double diff = point[d] - node->center_of_mass[d];
+			neg_f[d] += mult * diff;
+		}
+	}
+	else {
+		// Recursively apply Barnes-Hut to children
+		for (Node* child : node->children) {
+			if (child) {
+				computeNonEdgeForcesKLStudentHalf(child, max_width_sq / 4.0, point, theta_sq, neg_f, sum_Q);
 			}
 		}
 	}
@@ -342,12 +424,93 @@ void SPTree::computeNonEdgeForcesRKLGradient(Node* node, double max_width_sq, do
 	}
 }
 
-void SPTree::computeNonEdgeForcesJS(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq, double* term_1, double* term_2, double* term_3, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
+void SPTree::computeNonEdgeForcesJS(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq, double* term_1, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
 {
+	// Make sure that we spend no time on self-interactions
+	if (node->point == point) return;
+
+	// Compute distance between point and center-of-mass
+	double D = 0.0;
+	for (unsigned int d = 0; d < dimension; d++) {
+		double diff = point[d] - node->center_of_mass[d];
+		D += diff * diff; // || y_i - y_j ||^2
+	}
+
+	// Optimize (max_width / sqrt(D) < theta) by squaring and multiplying through by D
+	if (node->point || max_width_sq < theta_sq * D) {
+		// Compute and add t-SNE force between point and current node
+
+		unsigned int blacklist_count = 0;
+		for (unsigned int i = row_P[point_index]; i < row_P[point_index + 1]; i++) {
+			for (unsigned int j = 0; j < node->indices.size(); j++) {
+				if (col_P[i] == node->indices[j]) blacklist_count++;
+			}
+		}
+
+		// non_blacklisted sum
+		D = 1.0 / (1.0 + D); // || E_ij^-1
+		double mult = node->size * D; // || node_size * E_ij^-1
+		*sum_Q += mult; // add to Z
+
+		// blacklisted sum
+		double mult_blacklisted = (node->size - blacklist_count) * D; // || node_size - blacklist_count * E_ij^-1
+
+		*term_1 += mult_blacklisted; // add to sum_j e_ij
+	}
+	else {
+		// Recursively apply Barnes-Hut to children
+		for (Node* child : node->children) {
+			if (child) {
+				computeNonEdgeForcesJS(child, max_width_sq / 4.0, point, point_index, theta_sq, term_1, sum_Q, row_P, col_P);
+			}
+		}
+	}
 }
 
-void SPTree::computeNonEdgeForcesJSGradient(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq, double* term_1, double* term_2, double* term_3, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
+void SPTree::computeNonEdgeForcesJSGradient(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq, double* term_1, double* term_2, double* sum_Q, unsigned int* row_P, unsigned int* col_P)
 {
+	// Make sure that we spend no time on self-interactions
+	if (node->point == point) return;
+
+	// Compute distance between point and center-of-mass
+	double D = 0.0;
+	for (unsigned int d = 0; d < dimension; d++) {
+		double diff = point[d] - node->center_of_mass[d];
+		D += diff * diff; // || y_i - y_j ||^2
+	}
+
+	// Optimize (max_width / sqrt(D) < theta) by squaring and multiplying through by D
+	if (node->point || max_width_sq < theta_sq * D) {
+		// Compute and add t-SNE force between point and current node
+		D = 1.0 / (1.0 + D); // || E_ij^-1
+		// compute sum_Q
+		*sum_Q += node->size * D; // node_size * E_ij^-1 add to Z
+
+		unsigned int blacklist_count = 0;
+		for (unsigned int i = row_P[point_index]; i < row_P[point_index + 1]; i++) {
+			for (unsigned int j = 0; j < node->indices.size(); j++) {
+				if (col_P[i] == node->indices[j]) blacklist_count++;
+			}
+		}
+
+		//compute dimension-wise terms (i.e. all terms including (y_i-y_j))
+
+		for (unsigned int d = 0; d < dimension; d++) {
+
+			double diff = point[d] - node->center_of_mass[d];
+
+			term_1[d] += (node->size - blacklist_count) * D * D * diff;
+			term_2[d] += (node->size) * D * D * diff;
+		}
+	}
+	else {
+		// Recursively apply Barnes-Hut to children
+		for (Node* child : node->children) {
+			if (child) {
+				computeNonEdgeForcesJSGradient(child, max_width_sq / 4.0, point, point_index, theta_sq, term_1, term_2, sum_Q, row_P, col_P);
+			}
+		}
+	}
 }
 
 // Computes edge forces

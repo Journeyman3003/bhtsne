@@ -116,7 +116,7 @@ def init_directories():
         pass
 
     try:
-        os.makedirs(os.path.join(RESULT_DIR, "BHtSNE", BUILDINGBLOCK_DIR))
+        os.makedirs(os.path.join(RESULT_DIR, "tSNE", BUILDINGBLOCK_DIR))
     except FileExistsError:
         # directory already exists
         pass
@@ -338,7 +338,7 @@ if __name__ == "__main__":
         #                           DEBUG                         #
         ###########################################################
 
-        #bhtsne.debug_bh_tsne_pre(data)
+        #bhtsne.debug_bh_tsne_pre(data, data_name)
         #quit()
         # bhtsne.debug_data_file("windows", 2500, 784)
         #embedding_dict = bhtsne.debug_bh_tsne_post()

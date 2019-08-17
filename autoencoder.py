@@ -128,12 +128,12 @@ def show_encodings(inputs, latent_repr, outputs, filename="autoencoder-2dim-fash
 
 if __name__ == '__main__':
 
-    data_name = "fashion_mnist2500"
+    data_name = "fashion_mnist7000"
     #data_name = "mnist"
-    data, labels = mnist.load_fashion_mnist_data(False)
+    data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
     # #data, labels = mnist.load_mnist_data(True)
     #
-    data = mnist.mnist_1d_to_2d(data, num_observations=2500)
+    data = mnist.mnist_1d_to_2d(data, num_observations=7000)
     # rotate if mnist2500
     if data_name == "mnist2500":
         for idx, _2darray in enumerate(data):
@@ -161,7 +161,7 @@ if __name__ == '__main__':
     # #
     # show_encodings(inputs[indexes], latent_embedding[indexes], outputs[indexes])
     show_encodings(inputs[indexes], latent_embedding[indexes], outputs[indexes],
-                   filename="autoencoder-2dim-fashion_mnist2500.png")
+                   filename="autoencoder-2dim-" + data_name + ".png")
     # #
     filename = "initial_solution_" + data_name + "_autoencoder.pickle"
     # #
