@@ -5,6 +5,8 @@ import pickle
 import os
 from sklearn import decomposition, manifold, metrics
 import mnist
+import seaborn as sns
+from matplotlib import pyplot as plt
 
 
 # directory structure
@@ -12,8 +14,7 @@ CWD = os.path.dirname(os.path.realpath(__file__))
 INIT = os.path.join(CWD, "initial_solutions")
 
 # autoencoder files managed by autoencoder.py
-SUPPORTED_METHODS = ['random', 'gaussian', 'pca', 'lle', 'autoencoder']#,
-                    # 'mds', 'spectral']
+SUPPORTED_METHODS = ['random', 'gaussian', 'pca', 'lle', 'autoencoder', 'mds', 'spectral']
 DEFAULT_SEED = 42
 
 
@@ -62,6 +63,20 @@ def get_initial_embedding(data_name, method_name, i=1):
 
     with open(file_abspath, 'rb') as pickle_file:
         return pickle.load(pickle_file)
+
+
+def inspect_initial_embedding(data_name, labels, method_name, i=1):
+
+    embedding = get_initial_embedding(data_name, method_name, i)
+
+    sns.despine()
+    sns.set_style("white")
+    sns.scatterplot(x=embedding[:, 0],
+                    y=embedding[:, 1],
+                    hue=labels,
+                    legend="full",
+                    palette=sns.color_palette("bright"))
+    plt.show()
 
 
 def create_initial_solutions(data_name, data,  scaling_factor=.0001):
