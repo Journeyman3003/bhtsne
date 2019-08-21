@@ -61,7 +61,7 @@ static double randn();
 static void computeExactGradientKL(double* P, double* Y, int N, int D, double* dC);
 // using ChiSq distributed output similarities Q
 static void computeExactGradientKLChiSq(double* P, double* Y, int N, int D, double* dC);
-// using ChiSq distributed output similarities Q
+// using Student0.5 distributed output similarities Q
 static void computeExactGradientKLStudentHalf(double* P, double* Y, int N, int D, double* dC);
 static void computeExactGradientRKL(double* P, double* Y, int N, int D, double* dC);
 static void computeExactGradientJS(double* P, double* Y, int N, int D, double* dC);
@@ -113,6 +113,10 @@ static void computeEuclideanDistance(double* X, int N, int D, double* DD, bool s
 static void updateEuclideanDistance(double* X, int N, int update_index, int D, double* DD, bool squared);
 static void symmetrizeMatrix(unsigned int** row_P, unsigned int** col_P, double** val_P, int N);
 
+// genetic algorithm optimizer
+static void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, int N, int D, double costFunc(double*, int, double*));
+static vector<pair<double, int>> sortArr(vector<double> arr, int n);
+
 // Perform t-SNE
 void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks, int no_dims, double perplexity, double eta,
 			   double momentum, double final_momentum, double theta, int rand_seed, bool skip_random_init, int max_iter, 
@@ -139,13 +143,14 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
     float total_time = .0;
     clock_t start, end;
 
-    // Allocate some memory
-    double* dY    = (double*) malloc(N * no_dims * sizeof(double));
-    double* uY    = (double*) malloc(N * no_dims * sizeof(double));
-    double* gains = (double*) malloc(N * no_dims * sizeof(double));
-    if(dY == NULL || uY == NULL || gains == NULL) { printf("Memory allocation failed!\n"); exit(1); }
-    for(int i = 0; i < N * no_dims; i++)    uY[i] =  .0;
-    for(int i = 0; i < N * no_dims; i++) gains[i] = 1.0;
+
+	// Allocate some memory
+	double* dY = (double*)malloc(N * no_dims * sizeof(double));
+	double* uY = (double*)malloc(N * no_dims * sizeof(double));
+	double* gains = (double*)malloc(N * no_dims * sizeof(double));
+	if (dY == NULL || uY == NULL || gains == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	for (int i = 0; i < N * no_dims; i++)    uY[i] = .0;
+	for (int i = 0; i < N * no_dims; i++) gains[i] = 1.0;
 
     // Normalize input data (to prevent numerical problems)
     printf("Computing input similarities...\n");
@@ -293,63 +298,69 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 		// set costs to 0
 		for (int i = 0; i < N; i++) costs[i] = 0.0;
 
-        // Compute gradient
-		if (exact) {
-			switch (cost_function) {
-			case 1:
-				computeExactGradientRKL(P, Y, N, no_dims, dY);
-				//approximateExactGradient(P, Y, N, no_dims, dY, evaluateExactErrorRKL);
-				break;
-			case 2:
-				computeExactGradientJS(P, Y, N, no_dims, dY);
-				//approximateExactGradient(P, Y, N, no_dims, dY, evaluateExactErrorJS);
-				break;
-			default:
-				switch (output_similarities) {
+		if (optimization == 0) {
+
+			// Compute gradient
+			if (exact) {
+				switch (cost_function) {
 				case 1:
-					computeExactGradientKLChiSq(P, Y, N, no_dims, dY);
+					computeExactGradientRKL(P, Y, N, no_dims, dY);
+					//approximateExactGradient(P, Y, N, no_dims, dY, evaluateExactErrorRKL);
 					break;
 				case 2:
-					computeExactGradientKLStudentHalf(P, Y, N, no_dims, dY);
+					computeExactGradientJS(P, Y, N, no_dims, dY);
+					//approximateExactGradient(P, Y, N, no_dims, dY, evaluateExactErrorJS);
 					break;
 				default:
-					computeExactGradientKL(P, Y, N, no_dims, dY);
-					//approximateExactGradient(P, Y, N, no_dims, dY, evaluateExactErrorKL);
+					switch (output_similarities) {
+					case 1:
+						computeExactGradientKLChiSq(P, Y, N, no_dims, dY);
+						break;
+					case 2:
+						computeExactGradientKLStudentHalf(P, Y, N, no_dims, dY);
+						break;
+					default:
+						computeExactGradientKL(P, Y, N, no_dims, dY);
+						//approximateExactGradient(P, Y, N, no_dims, dY, evaluateExactErrorKL);
+					}
 				}
 			}
+			// Compute approximate gradient
+			else {
+				switch (cost_function) {
+				case 1:
+					computeApproxGradientRKL(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+					//approximateApproxGradient(row_P, col_P, val_P, Y, N, no_dims, dY, theta, evaluateApproxErrorRKL);
+					break;
+				case 2:
+					computeApproxGradientJS(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+					break;
+				default:
+					switch (output_similarities) {
+					case 1:
+						computeApproxGradientKLChiSq(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+						break;
+					case 2:
+						computeApproxGradientKLStudentHalf(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+						break;
+					default:
+						computeApproxGradientKL(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+						//approximateApproxGradient(row_P, col_P, val_P, Y, N, no_dims, dY, theta, evaluateApproxErrorKL);
+					}
+				}
+			}
+
+			// Update gains
+			for (int i = 0; i < N * no_dims; i++) gains[i] = (sign(dY[i]) != sign(uY[i])) ? (gains[i] + .2) : (gains[i] * .8);
+			for (int i = 0; i < N * no_dims; i++) if (gains[i] < .01) gains[i] = .01;
+
+			// Perform gradient update (with momentum and gains)
+			for (int i = 0; i < N * no_dims; i++) uY[i] = momentum * uY[i] - eta * gains[i] * dY[i];
+			for (int i = 0; i < N * no_dims; i++)  Y[i] = Y[i] + uY[i];
 		}
-		// Compute approximate gradient
 		else {
-			switch (cost_function) {
-			case 1:
-				computeApproxGradientRKL(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
-				//approximateApproxGradient(row_P, col_P, val_P, Y, N, no_dims, dY, theta, evaluateApproxErrorRKL);
-				break;
-			case 2:
-				computeApproxGradientJS(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
-				break;
-			default:
-				switch (output_similarities) {
-				case 1:
-					computeApproxGradientKLChiSq(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
-					break;
-				case 2:
-					computeApproxGradientKLStudentHalf(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
-					break;
-				default:
-					//computeApproxGradientKL(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
-					approximateApproxGradient(row_P, col_P, val_P, Y, N, no_dims, dY, theta, evaluateApproxErrorKL);
-				}
-			}
+			NULL;
 		}
-
-        // Update gains
-        for(int i = 0; i < N * no_dims; i++) gains[i] = (sign(dY[i]) != sign(uY[i])) ? (gains[i] + .2) : (gains[i] * .8);
-        for(int i = 0; i < N * no_dims; i++) if(gains[i] < .01) gains[i] = .01;
-
-        // Perform gradient update (with momentum and gains)
-        for(int i = 0; i < N * no_dims; i++) uY[i] = momentum * uY[i] - eta * gains[i] * dY[i];
-		for(int i = 0; i < N * no_dims; i++)  Y[i] = Y[i] + uY[i];
 
         // Make solution zero-mean
 		zeroMean(Y, N, no_dims);
@@ -996,7 +1007,6 @@ void approximateExactGradient(double* P, double* Y, int N, int D, double* dC, do
 	// Make sure the current gradient contains zeros
 	for (int i = 0; i < N * D; i++) dC[i] = 0.0;// Compute the squared Euclidean distance matrix
 	double* DD = (double*)malloc(N * N * sizeof(double));
-	double* DD2 = (double*)malloc(N * N * sizeof(double));
 	if (DD == NULL) { printf("Memory allocation failed!\n"); exit(1); }
 	computeEuclideanDistance(Y, N, D, DD, true);
 
@@ -1793,7 +1803,7 @@ void computeExactStudentInputSimilarity(double* X, int no_dims, int N, int D, do
 	for (int n = 0; n < N; n++) {
 
 		// Compute Student kernel row
-		for (int m = 0; m < N; m++) P[nN + m] = pow(1 + DD[nN + m] / no_dims, -(no_dims + 1) / 2);
+		for (int m = 0; m < N; m++) P[nN + m] = pow(1 + DD[nN + m] / no_dims, -(no_dims + 1) / 2.0);
 		P[nN + n] = DBL_MIN;
 
 		double sum_P = DBL_MIN;
@@ -2149,6 +2159,196 @@ static void symmetrizeMatrix(unsigned int** _row_P, unsigned int** _col_P, doubl
     free(offset); offset = NULL;
     free(row_counts); row_counts  = NULL;
 }
+
+void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, int N, int D, double costFunc(double*, int, double*))
+{
+	unsigned int pop_size = 10;
+	unsigned int num_offspring = 10;
+	//std::vector<double> offspring;
+	std::vector<double> fitness;
+	double* offspring = (double*) malloc(num_offspring * D * sizeof(double));
+	//double* fitness = (*double) calloc(popsize + num_offspring, sizeof(double));
+
+	double* DD = (double*)malloc(N * N * sizeof(double));
+	if (DD == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	computeEuclideanDistance(Y, N, D, DD, true);
+
+	double* Q = (double*)malloc(N * N * sizeof(double));
+	if (Q == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	double sum_Q = .0;
+	int nN = 0;
+
+	// optimize all given Y values
+	for (int n = 0; n < N; n++) {
+
+		// compute fitness of all population elements
+		for (int i = 0; i < pop_size; i++) {
+			//copy genome to current Y
+			for (int d = 0; d < D; d++) {
+				Y[n * D + d] = Y_genomes[n * D * pop_size + i * D + d];
+			}
+
+			updateEuclideanDistance(Y, N, n, D, DD, true);
+			// Compute Q-matrix and normalization sum
+			nN = 0;
+			sum_Q = .0;
+			for (int n = 0; n < N; n++) {
+				for (int m = 0; m < N; m++) {
+					if (n != m) {
+						Q[nN + m] = 1 / (1 + DD[nN + m]);
+						sum_Q += Q[nN + m];
+					}
+				}
+				nN += N;
+			}
+			for (int i = 0; i < N * N; i++) Q[i] /= sum_Q;
+
+			// minus to convert maximization into minimization
+			double fitness_i = -costFunc(P, N, Q);
+			fitness.push_back(fitness_i);
+		}
+		// create offspring
+		for (int o = 0; o < num_offspring; o++) {
+			// Roulette wheel selection of parent objects
+
+			unsigned int parent_one = 0;
+			unsigned int parent_two = 0;
+
+			double rndNumber = rand() / (double)RAND_MAX;
+			double offset = 0.0;
+
+			// parent 1
+			for (int i = 0; i < pop_size; i++) {
+				offset += fitness[i];
+				if (rndNumber < offset) {
+					parent_one = i;
+					break;
+				}
+			}
+
+			rndNumber = rand() / (double)RAND_MAX;
+			offset = 0.0;
+
+			// parent 2
+			for (int i = 0; i < pop_size; i++) {
+				offset += fitness[i];
+				if (rndNumber < offset) {
+					parent_two = i;
+					break;
+				}
+			}
+
+			// Uniform Crossover
+			for (int d = 0; d < D; d++) {
+				offspring[o * D + d] = Y_genomes[n * D * pop_size + parent_one * D + d];
+				offspring[o * D + d] += Y_genomes[n * D * pop_size + parent_two * D + d];
+				offspring[o * D + d] /= 2;
+			}
+
+			// mutation 
+
+			for (int d = 0; d < D; d++) {
+				rndNumber = rand() / (double)RAND_MAX;
+				offspring[o * D + d] *= (rndNumber + 1);
+			}
+
+			
+		}
+
+		// empty fitness as we do no longer care for parents, they die
+		fitness.clear();
+
+		// compute fitness of individuals
+		for (int o = 0; o < num_offspring; o++) {
+			for (int d = 0; d < D; d++) {
+				Y[n * D + d] = offspring[o * D + d];
+			}
+
+			updateEuclideanDistance(Y, N, n, D, DD, true);
+			// Compute Q-matrix and normalization sum
+			nN = 0;
+			sum_Q = .0;
+			for (int n = 0; n < N; n++) {
+				for (int m = 0; m < N; m++) {
+					if (n != m) {
+						Q[nN + m] = 1 / (1 + DD[nN + m]);
+						sum_Q += Q[nN + m];
+					}
+				}
+				nN += N;
+			}
+			for (int i = 0; i < N * N; i++) Q[i] /= sum_Q;
+
+			// for now, replace entire population by new one
+			// push back fitness to fitness vector
+			// minus to convert maximization into minimization
+			double fitness_i = costFunc(P, N, Q);
+			fitness.push_back(fitness_i);
+		}
+
+		//override population to offspring
+
+		for (int o = 0; o < pop_size; o++) {
+			for (int d = 0; d < D; d++) {
+				Y_genomes[n * D * pop_size + o * D + d] = offspring[o * D + d];
+			}
+		}
+
+
+		// order fitness to find best offspring
+		vector<pair<double, int>> fitness_ordered = sortArr(fitness, num_offspring + pop_size);
+
+		int best_index = fitness_ordered[0].second;
+
+		for (int d = 0; d < D; d++) {
+			Y[n * D + d] = offspring[best_index * D + d];
+		}
+
+		// Loop over all Y_genomes to obtain the new current population
+
+		//for (int i = 0; i < pop_size; i++) {
+		//	if (fitness_ordered) {
+		//		Y_genomes[n * D * pop_size + i * D + d]
+		//	}
+		//}
+
+		// compute survivors
+
+		//for (int i = 0; i < pop_size; i++) {
+		//	Y_genomes[n * D * pop_size + i * D + d] = offspring[i * D + d];
+		//}
+
+		//find best Y_genome to replace Y
+
+
+	}
+
+
+	// Clean up memory
+	free(DD);
+	free(Q);
+	free(offspring);
+	//free(fitness);
+}
+
+static vector<pair<double, int>> sortArr(vector<double> arr, int n)
+{
+	// Vector to store element 
+	// with respective present index 
+	vector<pair<double, int>> vp;
+
+	// Inserting element in pair vector 
+	// to keep track of previous indexes 
+	for (int i = 0; i < n; ++i) {
+		vp.push_back(make_pair(arr[i], i));
+	}
+
+	// Sorting pair vector 
+	sort(vp.begin(), vp.end());
+
+	return vp;
+}
+
 
 
 // Compute squared Euclidean distance matrix

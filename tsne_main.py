@@ -380,12 +380,14 @@ if __name__ == "__main__":
                         """
                         tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
                                       data_result_subdirectory=data_name,
-                                      result_base_dir=os.path.join(INITIAL_EMBEDDING_DIR, method, PARAM_DICT[param][1]),
+                                      result_base_dir=os.path.join(algorithm_dir, INITIAL_EMBEDDING_DIR,
+                                                                   method, PARAM_DICT[param][1]),
                                       initial_embedding_method=method, theta=0.0)
                     else:
                         tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
                                       data_result_subdirectory=data_name,
-                                      result_base_dir=os.path.join(INITIAL_EMBEDDING_DIR, method, PARAM_DICT[param][1]),
+                                      result_base_dir=os.path.join(algorithm_dir, INITIAL_EMBEDDING_DIR,
+                                                                   method, PARAM_DICT[param][1]),
                                       initial_embedding_method=method,)
 
         ###########################################################

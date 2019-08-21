@@ -374,9 +374,9 @@ def debug_bh_tsne_pre(data, data_name):
                  final_momentum=DEFAULT_FINAL_MOMENTUM, theta=0.0, randseed=EMPTY_SEED,
                  use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS, stop_lying_iter=DEFAULT_STOP_LYING_ITERATION,
                  restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
-                 momentum_switch_iter=1001, lying_factor=1,
-                 input_similarities=DEFAULT_BUILDING_BLOCK_INDEX, output_similarities=0,
-                 cost_function=2, optimization=DEFAULT_BUILDING_BLOCK_INDEX)
+                 momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=1,
+                 input_similarities=DEFAULT_BUILDING_BLOCK_INDEX, output_similarities=2,
+                 cost_function=0, optimization=DEFAULT_BUILDING_BLOCK_INDEX)
 
 
 def debug_data_file(workdir, sample_count, len_sample):

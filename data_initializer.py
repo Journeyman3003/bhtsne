@@ -140,8 +140,8 @@ if __name__ == '__main__':
     # create_initial_solutions("fashion_mnist2500", fashion_mnist2500_data)
 
     # FASHION_MNIST7000
-    fashion_mnist7000_data, _ = mnist.load_fashion_mnist_data(all_data=False, len_sample=7000)
-    create_initial_solutions("fashion_mnist7000", fashion_mnist7000_data)
+    #fashion_mnist7000_data, _ = mnist.load_fashion_mnist_data(all_data=False, len_sample=7000)
+    #create_initial_solutions("fashion_mnist7000", fashion_mnist7000_data)
 
     # FASHION_MNIST100 (debug)
     #fashion_mnist100_data, _ = mnist.load_fashion_mnist_data(all_data=False, len_sample=100)
@@ -150,6 +150,11 @@ if __name__ == '__main__':
     # FASHION_MNIST10 (debug debug)
     #fashion_mnist10_data, _ = mnist.load_fashion_mnist_data(all_data=False, len_sample=10)
     #create_initial_solutions("fashion_mnist10", fashion_mnist10_data)
+
+    # inspect embeddings
+    _, labels = mnist.load_fashion_mnist_data(all_data=False, len_sample=7000)
+
+    inspect_initial_embedding("fashion_mnist7000", labels, "spectral")
 
 
 
