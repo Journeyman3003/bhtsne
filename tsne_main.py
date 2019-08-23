@@ -37,6 +37,9 @@ FASHION_MNIST10000 = "fashion_mnist10000"
 DATA_SETS = [MNIST_TEST, MNIST, FASHION_MNIST, FASHION_MNIST10, FASHION_MNIST100, FASHION_MNIST1000, FASHION_MNIST2500,
              FASHION_MNIST5000, FASHION_MNIST7000, FASHION_MNIST10000]
 
+# Runtime testing
+RUNTIME_DIR = "run_time"
+
 # Parameter tuning
 PARAMTUNING_DIR = "parametertuning"
 
@@ -199,6 +202,7 @@ def _argparse():
     argparse.add_argument('-i', '--initial_embedding', choices=["gaussian", "pca", "lle"], default="gaussian")
     argparse.add_argument('-pt', '--parametertuning', action='store_true', default=False)
     argparse.add_argument('-y', '--y_init', action='store_true', default=False)
+    argparse.add_argument('-r', '--run_time', action='store_true', default=False)
     argparse.add_argument('-insim', '--input_similarities', default="gaussian",
                           choices=bhtsne.BUILDING_BLOCK_DICT["input_similarities"].keys())
     argparse.add_argument('-outsim', '--output_similarities', default="student",
@@ -347,12 +351,37 @@ if __name__ == "__main__":
         # sanity check of error
         # np.sum(embedding_array[:, 2])
         # quit()
+
+        ###########################################################
+        #                   RUNTIME Evaluation                    #
+        ###########################################################
+
+        if argp.run_time:
+            if exact:
+                for param in param_list:
+                    for num_samples in [200, 500, 1000, 2500, 5000, 7500, 10000, 20000, 30000]:
+
+                        data, _ = mnist.load_fashion_mnist_data(False, len_sample=num_samples)
+
+                        tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
+                                      data_result_subdirectory="fashion_mnist" + str(num_samples),
+                                      result_base_dir=os.path.join(algorithm_dir, RUNTIME_DIR),
+                                      theta=0.0)
+            else:
+                for param in param_list:
+                    for num_samples in [200, 500, 1000, 2500, 5000, 7500, 10000, 20000, 30000, 40000, 50000, 60000, 70000]:
+                        data, _ = mnist.load_fashion_mnist_data(False, len_sample=num_samples)
+
+                        tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
+                                      data_result_subdirectory="fashion_mnist" + str(num_samples),
+                                      result_base_dir=os.path.join(algorithm_dir, RUNTIME_DIR))
+
         ###########################################################
         #                   RUN PARAMETER TUNING                  #
         ###########################################################
 
         # For each Data set and parameter, perform tsne 5 times to have some reliable data
-        if argp.parametertuning:
+        elif argp.parametertuning:
             for param in param_list:
                 if exact:
                     """

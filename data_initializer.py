@@ -7,6 +7,7 @@ from sklearn import decomposition, manifold, metrics
 import mnist
 import seaborn as sns
 from matplotlib import pyplot as plt
+#from tsne_plot import get_axlims
 
 
 # directory structure
@@ -76,7 +77,31 @@ def inspect_initial_embedding(data_name, labels, method_name, i=1):
                     hue=labels,
                     legend="full",
                     palette=sns.color_palette("bright"))
+
+    x_min, x_max = get_axlims(embedding[:, 0], .1)
+    y_min, y_max = get_axlims(embedding[:, 1], .1)
+
+    plt.gca().set_xlim(x_min, x_max)
+    plt.gca().set_ylim(y_min, y_max)
     plt.show()
+
+
+def get_axlims(series, marginfactor):
+    """
+    Fix for a scaling issue with matplotlibs scatterplot and small values.
+    Takes in a pandas series, and a marginfactor (float).
+    A marginfactor of 0.2 would for example set a 20% border distance on both sides.
+    Output:[bottom,top]
+    To be used with .set_ylim(bottom,top)
+    """
+    minv = series.min()
+    maxv = series.max()
+    datarange = maxv-minv
+    border = abs(datarange*marginfactor)
+    maxlim = maxv+border
+    minlim = minv-border
+
+    return minlim, maxlim
 
 
 def create_initial_solutions(data_name, data,  scaling_factor=.0001):
@@ -154,7 +179,7 @@ if __name__ == '__main__':
     # inspect embeddings
     _, labels = mnist.load_fashion_mnist_data(all_data=False, len_sample=7000)
 
-    inspect_initial_embedding("fashion_mnist7000", labels, "spectral")
+    inspect_initial_embedding("fashion_mnist7000", labels, "autoencoder")
 
 
 

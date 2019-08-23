@@ -50,6 +50,16 @@ def plot_bh_tsne_result(_data, _labels, _legend="full", _palette="bright", _ax=N
                          palette=sns.color_palette(_palette),
                          ax=_ax)
 
+    x_min, x_max = get_axlims(_data[:, 0], .1)
+    y_min, y_max = get_axlims(_data[:, 1], .1)
+
+    if _ax is None:
+        plt.gca().set_xlim(x_min, x_max)
+        plt.gca().set_ylim(y_min, y_max)
+    else:
+        _ax.set_xlim(x_min, x_max)
+        _ax.set_ylim(y_min, y_max)
+
     return _g
 
 
@@ -158,6 +168,25 @@ def save_figure(figure, directory=PLOT_DIR, sep='-', *filename_extensions):
     figure.savefig(os.path.join(directory, figure_name), bbox_inches="tight")
 
 
+def get_axlims(series, marginfactor):
+    """
+    Fix for a scaling issue with matplotlibs scatterplot and small values.
+    Takes in a pandas series, and a marginfactor (float).
+    A marginfactor of 0.2 would for example set a 20% border distance on both sides.
+    Output:[bottom,top]
+    To be used with .set_ylim(bottom,top)
+    """
+    minv = series.min()
+    maxv = series.max()
+    datarange = maxv-minv
+    border = abs(datarange*marginfactor)
+    maxlim = maxv+border
+    minlim = minv-border
+
+    return minlim, maxlim
+
+
+
 if __name__ == "__main__":
     #if argv < 2:
     #    print("Please specify the .pickle file to be read: tsne_plot.py <.pickle-file>!")
@@ -165,7 +194,7 @@ if __name__ == "__main__":
     _, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
     #_, labels = mnist.load_fashion_mnist_data()
 
-    load_result_and_plot_comparison(_labels=labels, root_dir=os.path.join(RESULT_DIR, "tSNE", "buildingblocks", "input_similarities", "student"),
+    load_result_and_plot_comparison(_labels=labels, root_dir=os.path.join(RESULT_DIR, "tSNE", "buildingblocks", "output_similarities", "studenthalf"),
                                     plot_title_from_filepath_index=-6, data_identifier="fashion_mnist7000")
 
     # basepath1 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\unoptimized sptree\\1"
