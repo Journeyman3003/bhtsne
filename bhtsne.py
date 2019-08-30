@@ -370,13 +370,13 @@ def debug_bh_tsne_pre(data, data_name):
 
     init_bh_tsne(data, tmp_dir_path, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL_DIMENSIONS,
                  initial_solution=_initial_embedding,
-                 perplexity=30, learning_rate=DEFAULT_LEARNING_RATE, momentum=DEFAULT_MOMENTUM,
-                 final_momentum=DEFAULT_FINAL_MOMENTUM, theta=0.0, randseed=EMPTY_SEED,
+                 perplexity=50, learning_rate=DEFAULT_LEARNING_RATE, momentum=DEFAULT_MOMENTUM,
+                 final_momentum=DEFAULT_FINAL_MOMENTUM, theta=0.5, randseed=EMPTY_SEED,
                  use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS, stop_lying_iter=DEFAULT_STOP_LYING_ITERATION,
                  restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
                  momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=1,
-                 input_similarities=DEFAULT_BUILDING_BLOCK_INDEX, output_similarities=2,
-                 cost_function=0, optimization=DEFAULT_BUILDING_BLOCK_INDEX)
+                 input_similarities=DEFAULT_BUILDING_BLOCK_INDEX, output_similarities=1,
+                 cost_function=DEFAULT_BUILDING_BLOCK_INDEX, optimization=DEFAULT_BUILDING_BLOCK_INDEX)
 
 
 def debug_data_file(workdir, sample_count, len_sample):
@@ -403,6 +403,7 @@ def debug_bh_tsne_post():
     :return:
     """
     debug_dir_path = os.path.abspath(path_join(os.path.dirname(__file__), "windows", ))
+    #debug_dir_path = "C:\\Users\\Tobi\\git\\bhtsne\\results\\BHtSNE\\buildingblocks\\cost_function\\RKL\\iterations\\1000\\fashion_mnist\\max_iter\\1000"
 
     # load result files into single python dict object
     files = [f for f in glob.glob(path_join(debug_dir_path, "result*"))]
@@ -421,11 +422,33 @@ def debug_bh_tsne_post():
     return bh_tsne_result
 
 
+def get_axlims(series, marginfactor):
+    """
+    Fix for a scaling issue with matplotlibs scatterplot and small values.
+    Takes in a pandas series, and a marginfactor (float).
+    A marginfactor of 0.2 would for example set a 20% border distance on both sides.
+    Output:[bottom,top]
+    To be used with .set_ylim(bottom,top)
+    """
+    minv = series.min()
+    maxv = series.max()
+    datarange = maxv-minv
+    border = abs(datarange*marginfactor)
+    maxlim = maxv+border
+    minlim = minv-border
+
+    return minlim, maxlim
+
+
 def plot_bh_tsne_post(embedding_dict, labels):
 
     import seaborn as sns
     import matplotlib.pyplot as plt
     for key in embedding_dict.keys():
+
+
+        x_min, x_max = get_axlims(embedding_dict[key][:, 0], .1)
+        y_min, y_max = get_axlims(embedding_dict[key][:, 1], .1)
 
         sns.despine()
         sns.set_style("white")
@@ -434,6 +457,10 @@ def plot_bh_tsne_post(embedding_dict, labels):
                             hue=labels,
                             legend="full",
                             palette=sns.color_palette("bright"))
+
+        plt.gca().set_xlim(x_min, x_max)
+        plt.gca().set_ylim(y_min, y_max)
+
         figure = g.get_figure()
         figure.savefig(os.path.join("windows", "tsne-debug" + str(key[0])) + ".png", bbox_inches="tight")
         plt.close(figure)

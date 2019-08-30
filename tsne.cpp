@@ -152,6 +152,13 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 	for (int i = 0; i < N * no_dims; i++)    uY[i] = .0;
 	for (int i = 0; i < N * no_dims; i++) gains[i] = 1.0;
 
+	// Genetic Algorithm
+	double* Y_genomes = NULL;
+	//10 = pop_size
+	if (optimization == 1) {
+		Y_genomes = (double*)malloc(N * no_dims * 10 * sizeof(double));
+	}
+
     // Normalize input data (to prevent numerical problems)
     printf("Computing input similarities...\n");
     start = clock();
@@ -198,7 +205,7 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
     }
 
     // Compute input similarities for approximate t-SNE
-    else {
+	else {
 		// Compute asymmetric pairwise input similarities
 		switch (input_similarities) {
 			case 1: 
@@ -226,6 +233,11 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
     if(exact) printf("Input similarities computed in %4.2f seconds!\nLearning embedding...\n", (float) (end - start) / CLOCKS_PER_SEC);
     else printf("Input similarities computed in %4.2f seconds (sparsity = %f)!\nLearning embedding...\n", (float) (end - start) / CLOCKS_PER_SEC, (double) row_P[N] / ((double) N * (double) N));
     
+	if (optimization == 1) {
+		printf("Initializing Y_genomes at random!\n");
+		for (int i = 0; i < N * no_dims * 10; i++) Y_genomes[i] = randn() * .0001;
+	}
+
 	// Initialize solution (randomly)
 	if (skip_random_init != true) {
 		printf("Initializing Y at random!\n");
@@ -359,7 +371,7 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 			for (int i = 0; i < N * no_dims; i++)  Y[i] = Y[i] + uY[i];
 		}
 		else {
-			NULL;
+			computeExactGeneticOptimization(P, Y, Y_genomes, N, no_dims, evaluateExactErrorKL);
 		}
 
         // Make solution zero-mean
@@ -520,7 +532,7 @@ void computeApproxGradientKLChiSq(unsigned int* inp_row_P, unsigned int* inp_col
 		ind1 += D;
 	}
 
-	for (int n = 0; n < N; n++) tree->computeNonEdgeForcesKL(n, theta, neg_f + n * D, &sum_Q);
+	for (int n = 0; n < N; n++) tree->computeNonEdgeForcesKLChiSq(n, theta, neg_f + n * D, &sum_Q);
 
 	// Compute final t-SNE gradient
 	for (int i = 0; i < N * D; i++) {
@@ -2052,7 +2064,7 @@ static void computeStudentInputSimilarity(double* X, int no_dims, int N, int D, 
 		tree->search(obj_X[n], K + 1, &indices, &distances);
 
 		// Compute Student kernel row with df = no_dims
-		for (int m = 0; m < K; m++) cur_P[m] = pow(1 + distances[m + 1] * distances[m + 1] / no_dims, -(no_dims + 1) / 2);
+		for (int m = 0; m < K; m++) cur_P[m] = pow(1 + distances[m + 1] / no_dims, -(no_dims + 1) / 2.0);
 
 		double sum_P = DBL_MIN;
 		for (int m = 0; m < K; m++) sum_P += cur_P[m];
@@ -2207,6 +2219,12 @@ void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, in
 			double fitness_i = -costFunc(P, N, Q);
 			fitness.push_back(fitness_i);
 		}
+
+		double total_fitness = .0;
+		for (unsigned int i = 0; i < fitness.size(); ++i) {
+			total_fitness += fitness[i];
+		}
+
 		// create offspring
 		for (int o = 0; o < num_offspring; o++) {
 			// Roulette wheel selection of parent objects
@@ -2219,7 +2237,7 @@ void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, in
 
 			// parent 1
 			for (int i = 0; i < pop_size; i++) {
-				offset += fitness[i];
+				offset += fitness[i]/total_fitness;
 				if (rndNumber < offset) {
 					parent_one = i;
 					break;
@@ -2231,7 +2249,7 @@ void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, in
 
 			// parent 2
 			for (int i = 0; i < pop_size; i++) {
-				offset += fitness[i];
+				offset += fitness[i]/total_fitness;
 				if (rndNumber < offset) {
 					parent_two = i;
 					break;
@@ -2248,7 +2266,7 @@ void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, in
 			// mutation 
 
 			for (int d = 0; d < D; d++) {
-				rndNumber = rand() / (double)RAND_MAX;
+				rndNumber = (rand() / (double)RAND_MAX) - .5;
 				offspring[o * D + d] *= (rndNumber + 1);
 			}
 
@@ -2282,7 +2300,7 @@ void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, in
 			// for now, replace entire population by new one
 			// push back fitness to fitness vector
 			// minus to convert maximization into minimization
-			double fitness_i = costFunc(P, N, Q);
+			double fitness_i = -costFunc(P, N, Q);
 			fitness.push_back(fitness_i);
 		}
 

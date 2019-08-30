@@ -1,9 +1,17 @@
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import accuracy_score
 from sklearn.manifold.t_sne import trustworthiness
+from bhtsne import read_bh_tsne_result
 import numpy as np
+import json
+import os
+import glob
+import mnist
 
-from itertools import compress
+
+# directory structure
+CWD = os.path.dirname(os.path.realpath(__file__))
+RESULT_DIR = os.path.join(CWD, 'results')
 
 
 def get_unsupervised_nearest_neighbors_excl_self(data, n=1):
@@ -42,17 +50,87 @@ def _list_to_rank(_list):
     return ranks
 
 
+def compute_metrics(original_data, embedding_dict, labels):
+
+    metric_dict = {'1NNgeneralization_error':{},
+                   'trustworthiness':{},
+                   'cost_function_value':{}}
+    for key in embedding_dict.keys():
+
+        # 1NN generalization error
+        labels_predict = predict_labels(embedding_dict[key], labels)
+        generalization_error = compute_generalization_error(labels, labels_predict)
+        metric_dict['1NNgeneralization_error'][key[0]] = generalization_error
+
+        if len(labels) < 20000:
+            # trustworthiness (12)
+            trustw = trustworthiness(original_data, embedding_dict[key][:, 0:2], n_neighbors=12)
+            metric_dict['trustworthiness'][key[0]] = trustw
+
+        # cost function value
+        cost = sum(embedding_dict[key][:, 2])
+        metric_dict['cost_function_value'][key[0]] = cost
+
+    return metric_dict
+
+
+def get_bh_tsne_filtered_results(root_dir=RESULT_DIR, data_identifier='fashion_mnist7000', algorithm='tSNE',
+                                 task='parametertuning'):
+
+    files = [f for f in glob.glob(os.path.join(root_dir, "**/*.pickle"), recursive=True)]
+
+    # filter for paths that actually include the desired data
+    print("filtering for data: {}".format(data_identifier))
+
+    files = list(filter(lambda x: data_identifier in str(x).split(os.path.sep)
+                        and algorithm in str(x).split(os.path.sep)
+                        and task in str(x).split(os.path.sep), files))
+
+    # sort list
+    # essential for grouping
+    files.sort()
+
+    return files
+
+
+def evaluate_bh_tsne_results(data, labels, root_dir=RESULT_DIR, data_identifier='fashion_mnist7000', algorithm='tSNE',
+                             task='parametertuning'):
+
+    result_list = get_bh_tsne_filtered_results(root_dir=root_dir, data_identifier=data_identifier, algorithm=algorithm,
+                                               task=task)
+
+    for result in result_list:
+        print("Computing metrics for result file at {}".format(result))
+        filename = os.path.splitext(result)[0] + '-metrics.json'
+
+        embedding_dict = read_bh_tsne_result(result)
+
+        metric_dict = compute_metrics(data, embedding_dict, labels)
+
+        with open(filename, 'w') as file:
+            file.write(json.dumps(metric_dict, sort_keys=True))
+
+
 if __name__ == '__main__':
+
+    data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
+
+    evaluate_bh_tsne_results(data, labels, data_identifier='fashion_mnist7000', algorithm='tSNE', task='RKL')
+
+
+
+
+
 
     #X_high = np.array([[1,10,3,4], [1,1,30,5], [10,1,7,4], [1,1,9,40], [1,1, 110, 12], [1,1, 12, 14]])
     #X_low = np.array([[80, 4], [3, 5], [70, 4], [9, 4], [110, 12], [12, 140]])
 
-    import mnist
+    #import mnist
 
-    X_high, _ = mnist.load_mnist_data(True)
-    X_low = np.random.rand(70000, 2)
+    #X_high, _ = mnist.load_mnist_data(True)
+    #X_low = np.random.rand(70000, 2)
 
-    print(trustworthiness(X_high, X_low, n_neighbors=12))
+    #print(trustworthiness(X_high, X_low, n_neighbors=12))
 
 
     # X = np.array([[1,1], [2,1], [3,3], [4,4]])
