@@ -32,10 +32,11 @@ FASHION_MNIST2500 = "fashion_mnist2500"
 FASHION_MNIST5000 = "fashion_mnist5000"
 FASHION_MNIST7000 = "fashion_mnist7000"
 FASHION_MNIST10000 = "fashion_mnist10000"
+FASHION_MNIST20000 = "fashion_mnist20000"
 
 
 DATA_SETS = [MNIST_TEST, MNIST, FASHION_MNIST, FASHION_MNIST10, FASHION_MNIST100, FASHION_MNIST1000, FASHION_MNIST2500,
-             FASHION_MNIST5000, FASHION_MNIST7000, FASHION_MNIST10000]
+             FASHION_MNIST5000, FASHION_MNIST7000, FASHION_MNIST10000, FASHION_MNIST20000]
 
 # Runtime testing
 RUNTIME_DIR = "run_time"
@@ -182,6 +183,8 @@ def load_data(data_identifier):
     elif data_identifier == FASHION_MNIST7000:
         return mnist.load_fashion_mnist_data(all_data=False, len_sample=7000)
     elif data_identifier == FASHION_MNIST10000:
+        return mnist.load_fashion_mnist_data(all_data=False, len_sample=10000)
+    elif data_identifier == FASHION_MNIST20000:
         return mnist.load_fashion_mnist_data(all_data=False, len_sample=10000)
     else:
         print("unsupported data identifier: " + data_identifier)
