@@ -375,7 +375,7 @@ def debug_bh_tsne_pre(data, data_name):
                  use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS, stop_lying_iter=DEFAULT_STOP_LYING_ITERATION,
                  restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
                  momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=1,
-                 input_similarities=DEFAULT_BUILDING_BLOCK_INDEX, output_similarities=1,
+                 input_similarities=2, output_similarities=DEFAULT_BUILDING_BLOCK_INDEX,
                  cost_function=DEFAULT_BUILDING_BLOCK_INDEX, optimization=DEFAULT_BUILDING_BLOCK_INDEX)
 
 

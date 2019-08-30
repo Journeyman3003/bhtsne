@@ -137,7 +137,7 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
     // Determine whether we are using an exact algorithm
     if(N - 1 < 3 * perplexity) { printf("Perplexity too large for the number of data points!\n"); exit(1); }
     //printf("Using no_dims = %d, perplexity = %f, exaggeration factor = %d, theta = %f\nlearning rate = %f, momentum = %f, final momentum = %f, momentum switch iter = %d\nstop lying iter = %d, restart lying iter = %d\n", no_dims, perplexity, lying_factor, theta, eta, momentum, final_momentum, mom_switch_iter, stop_lying_iter, start_lying_iter);
-    bool exact = (theta == .0) ? true : false;
+	bool exact = (theta == .0) ? true : false;
 
     // Set learning parameters
     float total_time = .0;
@@ -371,7 +371,12 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 			for (int i = 0; i < N * no_dims; i++)  Y[i] = Y[i] + uY[i];
 		}
 		else {
-			computeExactGeneticOptimization(P, Y, Y_genomes, N, no_dims, evaluateExactErrorKL);
+			if (exact) {
+				computeExactGeneticOptimization(P, Y, Y_genomes, N, no_dims, evaluateExactErrorKL);
+			}
+			else {
+				NULL;
+			}
 		}
 
         // Make solution zero-mean

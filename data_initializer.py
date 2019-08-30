@@ -131,13 +131,14 @@ def create_initial_solutions(data_name, data,  scaling_factor=.0001):
             # skip for now
             None
         else:
-            latent_embedding = _embedding(_data=data, method=method, scaling_factor=scaling_factor)
-            filename = "initial_solution_" + data_name + "_" + method + '.pickle'
+            None
+            #latent_embedding = _embedding(_data=data, method=method, scaling_factor=scaling_factor)
+            #filename = "initial_solution_" + data_name + "_" + method + '.pickle'
 
-            file_abspath = os.path.join(INIT, filename)
+            #file_abspath = os.path.join(INIT, filename)
 
-            with open(file_abspath, 'wb') as pickle_file:
-                pickle.dump(latent_embedding, pickle_file)
+            #with open(file_abspath, 'wb') as pickle_file:
+            #    pickle.dump(latent_embedding, pickle_file)
 
 
 if __name__ == '__main__':
@@ -168,6 +169,10 @@ if __name__ == '__main__':
     #fashion_mnist7000_data, _ = mnist.load_fashion_mnist_data(all_data=False, len_sample=7000)
     #create_initial_solutions("fashion_mnist7000", fashion_mnist7000_data)
 
+    # FASHION_MNIST20000
+    fashion_mnist20000_data, _ = mnist.load_fashion_mnist_data(all_data=False, len_sample=20000)
+    create_initial_solutions("fashion_mnist20000", fashion_mnist20000_data)
+
     # FASHION_MNIST100 (debug)
     #fashion_mnist100_data, _ = mnist.load_fashion_mnist_data(all_data=False, len_sample=100)
     #create_initial_solutions("fashion_mnist100", fashion_mnist100_data)
@@ -177,9 +182,9 @@ if __name__ == '__main__':
     #create_initial_solutions("fashion_mnist10", fashion_mnist10_data)
 
     # inspect embeddings
-    _, labels = mnist.load_fashion_mnist_data(all_data=False, len_sample=7000)
+    #_, labels = mnist.load_fashion_mnist_data(all_data=False, len_sample=20000)
 
-    inspect_initial_embedding("fashion_mnist7000", labels, "autoencoder")
+    #inspect_initial_embedding("fashion_mnist7000", labels, "autoencoder")
 
 
 
