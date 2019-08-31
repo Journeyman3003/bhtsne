@@ -84,6 +84,7 @@ public:
 	void computeNonEdgeForcesKL(unsigned int point_index, double theta, double neg_f[], double* sum_Q);
 	void computeNonEdgeForcesKLChiSq(unsigned int point_index, double theta, double neg_f[], double* sum_Q);
 	void computeNonEdgeForcesKLStudentHalf(unsigned int point_index, double theta, double neg_f[], double* sum_Q);
+	void computeNonEdgeForcesKLStudentAlpha(unsigned int point_index, double alpha, double theta, double neg_f[], double* sum_Q);
 	void computeNonEdgeForcesRKL(unsigned int point_index, double theta, double* term_1, double* term_2, double* term_3, double* sum_Q,
 								 unsigned int* row_P, unsigned int* col_P); //row_p and col_p for blacklisted values
 	void computeNonEdgeForcesRKLGradient(unsigned int point_index, double theta,
@@ -105,6 +106,7 @@ private:
 	void computeNonEdgeForcesKL(Node* node, double max_width_sq, double* point, double theta_sq, double neg_f[], double* sum_Q);
 	void computeNonEdgeForcesKLChiSq(Node* node, double max_width_sq, double* point, double theta_sq, double neg_f[], double* sum_Q);
 	void computeNonEdgeForcesKLStudentHalf(Node* node, double max_width_sq, double* point, double theta_sq, double neg_f[], double* sum_Q);
+	void computeNonEdgeForcesKLStudentAlpha(Node* node, double max_width_sq, double* point, double alpha, double theta_sq, double neg_f[], double* sum_Q);
 	void computeNonEdgeForcesRKL(Node* node, double max_width_sq, double* point, unsigned int point_index, double theta_sq,
 								 double* term_1, double* term_2, double* term_3, double* sum_Q,
 								 unsigned int* row_P, unsigned int* col_P); //row_p and col_p for blacklisted values

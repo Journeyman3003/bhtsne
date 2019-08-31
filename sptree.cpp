@@ -192,6 +192,13 @@ void SPTree::computeNonEdgeForcesKLStudentHalf(unsigned int point_index, double 
 	computeNonEdgeForcesKLStudentHalf(root, max_width * max_width, point, theta * theta, neg_f, sum_Q);
 }
 
+// Compute non-edge forces using Barnes-Hut algorithm (Student alpha Output Similarities)
+void SPTree::computeNonEdgeForcesKLStudentAlpha(unsigned int point_index, double alpha, double theta, double neg_f[], double* sum_Q)
+{
+	double* point = data + point_index * dimension;
+	computeNonEdgeForcesKLStudentAlpha(root, max_width * max_width, point, alpha, theta * theta, neg_f, sum_Q);
+}
+
 void SPTree::computeNonEdgeForcesRKL(unsigned int point_index, double theta, double* term_1, double* term_2, double* term_3, double* sum_Q,
 									 unsigned int* row_P, unsigned int* col_P) //row_p and col_p for blacklisted values
 {
@@ -322,6 +329,40 @@ void SPTree::computeNonEdgeForcesKLStudentHalf(Node* node, double max_width_sq, 
 		for (Node* child : node->children) {
 			if (child) {
 				computeNonEdgeForcesKLStudentHalf(child, max_width_sq / 4.0, point, theta_sq, neg_f, sum_Q);
+			}
+		}
+	}
+}
+
+void SPTree::computeNonEdgeForcesKLStudentAlpha(Node* node, double max_width_sq, double* point, double alpha, double theta_sq, double neg_f[], double* sum_Q)
+{
+	// Make sure that we spend no time on self-interactions
+	if (node->point == point) return;
+
+	// Compute distance between point and center-of-mass
+	double D = 0.0;
+	for (unsigned int d = 0; d < dimension; d++) {
+		double diff = point[d] - node->center_of_mass[d];
+		D += diff * diff; // || y_i - y_j ||^2
+	}
+
+	// Optimize (max_width / sqrt(D) < theta) by squaring and multiplying through by D
+	if (node->point || max_width_sq < theta_sq * D) {
+		// Compute and add t-SNE force between point and current node
+		double E = pow(1 + D/alpha, -(alpha + 1.0) / 2.0); // || E_ij
+		double mult = node->size * E; // || node_size * E_ij
+		*sum_Q += mult; // add to Z
+		mult *= 1 / (1 + D/alpha); // E_ij * e_ij^(4/3) 
+		for (unsigned int d = 0; d < dimension; d++) { // split computation of SUM(e_ij * e_ij^(4/3) * (y_i - y_j)) dimension-wise
+			double diff = point[d] - node->center_of_mass[d];
+			neg_f[d] += mult * diff;
+		}
+	}
+	else {
+		// Recursively apply Barnes-Hut to children
+		for (Node* child : node->children) {
+			if (child) {
+				computeNonEdgeForcesKLStudentAlpha(child, max_width_sq / 4.0, point, alpha, theta_sq, neg_f, sum_Q);
 			}
 		}
 	}

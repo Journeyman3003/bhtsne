@@ -56,13 +56,16 @@ static void computeGaussianInputSimilarity(double* X, int N, int D, unsigned int
 static void computeLaplacianInputSimilarity(double* X, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, double perplexity, int K);
 static void computeStudentInputSimilarity(double* X, int no_dims, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, int K);
 static double randn();
+static double randn(double mean, double stdDev);
 
 // Exact gradients
-static void computeExactGradientKL(double* P, double* Y, int N, int D, double* dC);
+//static void computeExactGradientKL(double* P, double* Y, int N, int D, int freeze_index, double* dC);
 // using ChiSq distributed output similarities Q
-static void computeExactGradientKLChiSq(double* P, double* Y, int N, int D, double* dC);
+//static void computeExactGradientKLChiSq(double* P, double* Y, int N, int D, double* dC);
 // using Student0.5 distributed output similarities Q
-static void computeExactGradientKLStudentHalf(double* P, double* Y, int N, int D, double* dC);
+//static void computeExactGradientKLStudentHalf(double* P, double* Y, int N, int D, double* dC);
+// using StudentAlpha distributed output similarities Q
+static void computeExactGradientKLStudentAlpha(double* P, double* Y, int N, int D, double alpha, double* dC);
 static void computeExactGradientRKL(double* P, double* Y, int N, int D, double* dC);
 static void computeExactGradientJS(double* P, double* Y, int N, int D, double* dC);
 
@@ -70,17 +73,18 @@ static void computeExactGradientJS(double* P, double* Y, int N, int D, double* d
 static void approximateExactGradient(double* P, double* Y, int N, int D, double* dC, double costFunc(double*, int, double*));
 
 // BH approximated gradients
-static void computeApproxGradientKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
+//static void computeApproxGradientKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, int freeze_index, double* dC, double theta);
 // using ChiSq distributed output similarities Q
-static void computeApproxGradientKLChiSq(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
+//static void computeApproxGradientKLChiSq(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
 // using Student0.5 distributed output similarities Q
-static void computeApproxGradientKLStudentHalf(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
+//static void computeApproxGradientKLStudentHalf(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
+// using StudentAlpha distributed output similarities Q
+static void computeApproxGradientKLStudentAlpha(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double alpha, double* dC, double theta);
 static void computeApproxGradientRKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
 static void computeApproxGradientJS(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
 
 static void approximateApproxGradient(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D,
 									  double* dC, double theta, double costFunc(unsigned int*, unsigned int*, double*, double*, int, int, double, double*));
-static double computeSingleKL(int n, int D, double* Y, unsigned int* row_P, unsigned int* col_P, double* val_P, double sum_Q, double h = .0, int dimension_h = -1);
 
 // Exact cost functions
 static double evaluateExactErrorKL(double* P, double* Y, int N, int D, double* costs);
@@ -89,6 +93,8 @@ static double evaluateExactErrorKL(double* P, int N, double* Q);
 static double evaluateExactErrorKLChiSq(double* P, double* Y, int N, int D, double* costs);
 // using Student0.5 distributed output similarities Q
 static double evaluateExactErrorKLStudentHalf(double* P, double* Y, int N, int D, double* costs);
+// using StudentAlpha distributed output similarities Q
+static double evaluateExactErrorKLStudentAlpha(double* P, double* Y, int N, int D, double alpha, double* costs);
 static double evaluateExactErrorRKL(double* P, double* Y, int N, int D, double* costs);
 static double evaluateExactErrorRKL(double* P, int N, double* Q);
 static double evaluateExactErrorJS(double* P, double* Y, int N, int D, double* costs);
@@ -102,6 +108,8 @@ static double evaluateApproxErrorKL(unsigned int* row_P, unsigned int* col_P, do
 static double evaluateApproxErrorKLChiSq(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
 // using Student0.5 distributed output similarities Q
 static double evaluateApproxErrorKLStudentHalf(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
+// using StudentAlpha distributed output similarities Q
+static double evaluateApproxErrorKLStudentAlpha(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double alpha, double theta, double* costs);
 static double evaluateApproxErrorRKL(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
 static double evaluateApproxErrorJS(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
 // helper to compute KL(P||M)
@@ -121,8 +129,8 @@ static vector<pair<double, int>> sortArr(vector<double> arr, int n);
 void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks, int no_dims, double perplexity, double eta,
 			   double momentum, double final_momentum, double theta, int rand_seed, bool skip_random_init, int max_iter, 
 			   int lying_factor, int stop_lying_iter, int start_lying_iter, int mom_switch_iter, int input_similarities, 
-			   int output_similarities, int cost_function, int optimization) {
-
+			   int output_similarities, int cost_function, int optimization, int freeze_index) {
+	double alpha = 0.1;
     // Set random seed
     if (skip_random_init != true) {
 		if(rand_seed >= 0) {
@@ -245,6 +253,12 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 	}
 	else {
 		printf("Skip random initialization of Y!\n");
+		// check whether a freeze index is passed that is > 0
+		// which would indicate the remainder freeze_index < n < N to be initialized at random
+		if (freeze_index != 0) {
+			printf("Still, test observations are initialized at random!\n");
+			for (int i = freeze_index * no_dims; i < N * no_dims; i++) Y[i] = randn() * .0001;
+		}
 	}
 
 	string cost_function_name;
@@ -270,6 +284,9 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 			case 2:
 				C = evaluateExactErrorKLStudentHalf(P, Y, N, no_dims, costs);
 				break;
+			case 3:
+				C = evaluateExactErrorKLStudentAlpha(P, Y, N, no_dims, alpha, costs);
+				break;
 			default:
 				C = evaluateExactErrorKL(P, Y, N, no_dims, costs);
 			}
@@ -293,6 +310,9 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 				break;
 			case 2:
 				C = evaluateApproxErrorKLStudentHalf(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
+				break;
+			case 3:
+				C = evaluateApproxErrorKLStudentAlpha(row_P, col_P, val_P, Y, N, no_dims, alpha, theta, costs);
 				break;
 			default:
 				C = evaluateApproxErrorKL(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
@@ -326,14 +346,18 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 				default:
 					switch (output_similarities) {
 					case 1:
-						computeExactGradientKLChiSq(P, Y, N, no_dims, dY);
+						//computeExactGradientKLChiSq(P, Y, N, no_dims, dY);
 						break;
 					case 2:
-						computeExactGradientKLStudentHalf(P, Y, N, no_dims, dY);
+						//computeExactGradientKLStudentHalf(P, Y, N, no_dims, dY);
+						break;
+					case 3:
+						computeExactGradientKLStudentAlpha(P, Y, N, no_dims, alpha, dY);
 						break;
 					default:
-						computeExactGradientKL(P, Y, N, no_dims, dY);
+						//computeExactGradientKL(P, Y, N, no_dims, freeze_index, dY);
 						//approximateExactGradient(P, Y, N, no_dims, dY, evaluateExactErrorKL);
+						break;
 					}
 				}
 			}
@@ -341,34 +365,38 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 			else {
 				switch (cost_function) {
 				case 1:
-					computeApproxGradientRKL(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
-					//approximateApproxGradient(row_P, col_P, val_P, Y, N, no_dims, dY, theta, evaluateApproxErrorRKL);
+					//computeApproxGradientRKL(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+					approximateApproxGradient(row_P, col_P, val_P, Y, N, no_dims, dY, theta, evaluateApproxErrorRKL);
 					break;
 				case 2:
-					computeApproxGradientJS(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+					//computeApproxGradientJS(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+					approximateApproxGradient(row_P, col_P, val_P, Y, N, no_dims, dY, theta, evaluateApproxErrorJS);
 					break;
 				default:
 					switch (output_similarities) {
 					case 1:
-						computeApproxGradientKLChiSq(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+						//computeApproxGradientKLChiSq(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
 						break;
 					case 2:
-						computeApproxGradientKLStudentHalf(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+						//computeApproxGradientKLStudentHalf(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
 						break;
+					case 3:
+						computeApproxGradientKLStudentAlpha(row_P, col_P, val_P, Y, N, no_dims, alpha, dY, theta);
 					default:
-						computeApproxGradientKL(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+						//computeApproxGradientKL(row_P, col_P, val_P, Y, N, no_dims, freeze_index, dY, theta);
 						//approximateApproxGradient(row_P, col_P, val_P, Y, N, no_dims, dY, theta, evaluateApproxErrorKL);
+						break;
 					}
 				}
 			}
 
 			// Update gains
-			for (int i = 0; i < N * no_dims; i++) gains[i] = (sign(dY[i]) != sign(uY[i])) ? (gains[i] + .2) : (gains[i] * .8);
-			for (int i = 0; i < N * no_dims; i++) if (gains[i] < .01) gains[i] = .01;
+			for (int i = freeze_index * no_dims; i < N * no_dims; i++) gains[i] = (sign(dY[i]) != sign(uY[i])) ? (gains[i] + .2) : (gains[i] * .8);
+			for (int i = freeze_index * no_dims; i < N * no_dims; i++) if (gains[i] < .01) gains[i] = .01;
 
 			// Perform gradient update (with momentum and gains)
-			for (int i = 0; i < N * no_dims; i++) uY[i] = momentum * uY[i] - eta * gains[i] * dY[i];
-			for (int i = 0; i < N * no_dims; i++)  Y[i] = Y[i] + uY[i];
+			for (int i = freeze_index * no_dims; i < N * no_dims; i++) uY[i] = momentum * uY[i] - eta * gains[i] * dY[i];
+			for (int i = freeze_index * no_dims; i < N * no_dims; i++)  Y[i] = Y[i] + uY[i];
 		}
 		else {
 			if (exact) {
@@ -416,6 +444,9 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 					case 2:
 						C = evaluateExactErrorKLStudentHalf(P, Y, N, no_dims, costs);
 						break;
+					case 3:
+						C = evaluateExactErrorKLStudentAlpha(P, Y, N, no_dims, alpha, costs);
+						break;
 					default:
 						C = evaluateExactErrorKL(P, Y, N, no_dims, costs);
 					}
@@ -436,6 +467,9 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 						break;
 					case 2:
 						C = evaluateApproxErrorKLStudentHalf(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
+						break;
+					case 3:
+						C = evaluateApproxErrorKLStudentAlpha(row_P, col_P, val_P, Y, N, no_dims, alpha, theta, costs);
 						break;
 					default:
 						C = evaluateApproxErrorKL(row_P, col_P, val_P, Y, N, no_dims, theta, costs);
@@ -473,9 +507,9 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
     printf("Fitting performed in %4.2f seconds.\n", total_time);
 }
 
-
+/*
 // Compute gradient of the t-SNE cost function (KL - using Barnes-Hut algorithm)
-static void computeApproxGradientKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta)
+static void computeApproxGradientKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, int freeze_index, double* dC, double theta)
 {
 
     // Construct space-partitioning tree on current map
@@ -587,6 +621,56 @@ void computeApproxGradientKLStudentHalf(unsigned int* inp_row_P, unsigned int* i
 	}
 
 	for (int n = 0; n < N; n++) tree->computeNonEdgeForcesKLStudentHalf(n, theta, neg_f + n * D, &sum_Q);
+
+	// Compute final t-SNE gradient
+	for (int i = 0; i < N * D; i++) {
+		dC[i] = pos_f[i] - (neg_f[i] / sum_Q);
+	}
+	free(pos_f);
+	free(neg_f);
+	delete tree;
+
+}
+*/
+
+void computeApproxGradientKLStudentAlpha(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double alpha, double* dC, double theta)
+{
+	// Construct space-partitioning tree on current map
+	SPTree* tree = new SPTree(D, Y, N);
+
+	// Compute all terms required for t-SNE gradient
+	double sum_Q = .0;
+	double* pos_f = (double*)calloc(N * D, sizeof(double));
+	double* neg_f = (double*)calloc(N * D, sizeof(double));
+	if (pos_f == NULL || neg_f == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+
+
+	// Loop over all edges in the graph
+	unsigned int ind1 = 0;
+	unsigned int ind2 = 0;
+
+	for (unsigned int n = 0; n < N; n++) {
+		for (unsigned int i = inp_row_P[n]; i < inp_row_P[n + 1]; i++) {
+
+			// Compute pairwise distance and Q-value
+			double dist = 0.0;
+			ind2 = inp_col_P[i] * D;
+			for (unsigned int d = 0; d < D; d++) {
+				double diff = Y[ind1 + d] - Y[ind2 + d];
+				dist += diff * diff;
+			}
+			double mult = inp_val_P[i] / (1 + dist/alpha);
+
+			// Sum positive force
+			for (unsigned int d = 0; d < D; d++) {
+				double diff = Y[ind1 + d] - Y[ind2 + d];
+				pos_f[ind1 + d] += mult * diff;
+			}
+		}
+		ind1 += D;
+	}
+
+	for (int n = 0; n < N; n++) tree->computeNonEdgeForcesKLStudentAlpha(n, alpha, theta, neg_f + n * D, &sum_Q);
 
 	// Compute final t-SNE gradient
 	for (int i = 0; i < N * D; i++) {
@@ -759,9 +843,9 @@ static void approximateApproxGradient(unsigned int* inp_row_P, unsigned int* inp
 	}
 	free(costs); costs = NULL;
 }
-
+/*
 // Compute gradient of the t-SNE cost function (KL - exact)
-static void computeExactGradientKL(double* P, double* Y, int N, int D, double* dC) {
+static void computeExactGradientKL(double* P, double* Y, int N, int D, int freeze_index, double* dC) {
 
 	// Make sure the current gradient contains zeros
 	for(int i = 0; i < N * D; i++) dC[i] = 0.0;
@@ -893,6 +977,54 @@ void computeExactGradientKLStudentHalf(double* P, double* Y, int N, int D, doubl
 		for (int m = 0; m < N; m++) {
 			if (n != m) {
 				double mult = (P[nN + m] - (Q[nN + m] / sum_Q)) * pow(Q[nN + m], 4.0/3.0);
+				for (int d = 0; d < D; d++) {
+					dC[nD + d] += (Y[nD + d] - Y[mD + d]) * mult;
+				}
+			}
+			mD += D;
+		}
+		nN += N;
+		nD += D;
+	}
+
+	// Free memory
+	free(DD); DD = NULL;
+	free(Q);  Q = NULL;
+}
+*/
+void computeExactGradientKLStudentAlpha(double* P, double* Y, int N, int D, double alpha, double* dC)
+{
+	// Make sure the current gradient contains zeros
+	for (int i = 0; i < N * D; i++) dC[i] = 0.0;
+
+	// Compute the squared Euclidean distance matrix
+	double* DD = (double*)malloc(N * N * sizeof(double));
+	if (DD == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	computeEuclideanDistance(Y, N, D, DD, true);
+
+	// Compute Q-matrix and normalization sum
+	double* Q = (double*)malloc(N * N * sizeof(double));
+	if (Q == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	double sum_Q = .0;
+	int nN = 0;
+	for (int n = 0; n < N; n++) {
+		for (int m = 0; m < N; m++) {
+			if (n != m) {
+				Q[nN + m] = pow(1 + DD[nN + m] / alpha, -(1.0 + alpha) / 2.0);
+				sum_Q += Q[nN + m];
+			}
+		}
+		nN += N;
+	}
+
+	// Perform the computation of the gradient
+	nN = 0;
+	int nD = 0;
+	for (int n = 0; n < N; n++) {
+		int mD = 0;
+		for (int m = 0; m < N; m++) {
+			if (n != m) {
+				double mult = (P[nN + m] - (Q[nN + m] / sum_Q)) * pow(Q[nN + m], 2.0 / (1.0 + alpha));
 				for (int d = 0; d < D; d++) {
 					dC[nD + d] += (Y[nD + d] - Y[mD + d]) * mult;
 				}
@@ -1089,33 +1221,6 @@ void approximateExactGradient(double* P, double* Y, int N, int D, double* dC, do
 
 }
 
-static double computeSingleKL(int n, int D, double* Y, unsigned int* row_P, unsigned int* col_P, double* val_P, double sum_Q, double h, int dimension_h){
-	int ind1, ind2;
-	ind1 = n * D;
-	double* dist = (double*)calloc(D, sizeof(double));
-	// variable to store cost of point n
-	double Cn = .0;
-	for (int i = row_P[n]; i < row_P[n + 1]; i++) {
-		double Q = .0;
-		ind2 = col_P[i] * D;
-		for (int d = 0; d < D; d++) {
-			if (d == dimension_h) {
-				dist[d] = Y[ind1 + d] + h;
-			}
-			else {
-				dist[d] = Y[ind1 + d];
-			}
-		}
-		for (int d = 0; d < D; d++) dist[d] -= Y[ind2 + d];
-		for (int d = 0; d < D; d++) Q += dist[d] * dist[d];
-		Q = (1.0 / (1.0 + Q)) / sum_Q;
-		Cn += val_P[i] * log((val_P[i] + FLT_MIN) / (Q + FLT_MIN));
-	}
-
-	// Clean up memory
-	free(dist);
-	return Cn;
-}
 
 
 // Evaluate t-SNE cost function (KL - exactly)
@@ -1258,6 +1363,50 @@ double evaluateExactErrorKLStudentHalf(double* P, double* Y, int N, int D, doubl
 	free(Q);
 	return C;
 }
+
+
+// Evaluate t-SNE cost function (KL - Student Alpha Q - exactly)
+double evaluateExactErrorKLStudentAlpha(double* P, double* Y, int N, int D, double alpha, double* costs)
+{
+	// Compute the squared Euclidean distance matrix
+	double* DD = (double*)malloc(N * N * sizeof(double));
+	double* Q = (double*)malloc(N * N * sizeof(double));
+	if (DD == NULL || Q == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	computeEuclideanDistance(Y, N, D, DD, true);
+
+	// Compute Q-matrix and normalization sum
+	int nN = 0;
+	double sum_Q = DBL_MIN;
+	for (int n = 0; n < N; n++) {
+		for (int m = 0; m < N; m++) {
+			if (n != m) {
+				Q[nN + m] = pow(1 + DD[nN + m] / alpha, -(1.0 + alpha) / 2.0);
+				sum_Q += Q[nN + m];
+			}
+			else Q[nN + m] = DBL_MIN;
+		}
+		nN += N;
+	}
+	for (int i = 0; i < N * N; i++) Q[i] /= sum_Q;
+
+	// Sum t-SNE error
+	double C = .0;
+	// i = Data Point i
+	for (int i = 0; i < N; i++) {
+		// j = neighboring point index
+		for (int j = 0; j < N; j++) {
+			//write to costs
+			costs[i] += P[i * N + j] * log((P[i * N + j] + FLT_MIN) / (Q[i * N + j] + FLT_MIN));
+		}
+		C += costs[i];
+	}
+
+	// Clean up memory
+	free(DD);
+	free(Q);
+	return C;
+}
+
 
 // Evaluate t-SNE cost function (RKL - exactly)
 static double evaluateExactErrorRKL(double* P, double* Y, int N, int D, double* costs)
@@ -1505,7 +1654,41 @@ double evaluateApproxErrorKLStudentHalf(unsigned int* row_P, unsigned int* col_P
 			for (int d = 0; d < D; d++) buff[d] = Y[ind1 + d];
 			for (int d = 0; d < D; d++) buff[d] -= Y[ind2 + d];
 			for (int d = 0; d < D; d++) Q += buff[d] * buff[d];
-			Q = exp(-0.5 * sqrt(D)) / sum_Q;
+			Q = pow(1 + 2 * D, -3.0 / 4.0) / sum_Q;
+			costs[n] += val_P[i] * log((val_P[i] + FLT_MIN) / (Q + FLT_MIN));
+		}
+		C += costs[n];
+	}
+
+	// Clean up memory
+	free(buff);
+	delete tree;
+	return C;
+}
+
+// Evaluate t-SNE cost function (KL- StudentHalf - approximately)
+double evaluateApproxErrorKLStudentAlpha(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double alpha, double theta, double* costs)
+{
+	// KL = P * log (P / Q)
+
+// Get estimate of normalization term
+	SPTree* tree = new SPTree(D, Y, N);
+	double* buff = (double*)calloc(D, sizeof(double));
+	double sum_Q = .0;
+	for (int n = 0; n < N; n++) tree->computeNonEdgeForcesKLStudentAlpha(n, alpha, theta, buff, &sum_Q);
+
+	// Loop over all edges to compute t-SNE error
+	int ind1, ind2;
+	double C = .0, Q;
+	for (int n = 0; n < N; n++) {
+		ind1 = n * D;
+		for (int i = row_P[n]; i < row_P[n + 1]; i++) {
+			Q = .0;
+			ind2 = col_P[i] * D;
+			for (int d = 0; d < D; d++) buff[d] = Y[ind1 + d];
+			for (int d = 0; d < D; d++) buff[d] -= Y[ind2 + d];
+			for (int d = 0; d < D; d++) Q += buff[d] * buff[d];
+			Q = pow(1 + D / alpha, -(1.0 + alpha) / 2) / sum_Q;
 			costs[n] += val_P[i] * log((val_P[i] + FLT_MIN) / (Q + FLT_MIN));
 		}
 		C += costs[n];
@@ -2183,7 +2366,32 @@ void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, in
 	unsigned int num_offspring = 10;
 	//std::vector<double> offspring;
 	std::vector<double> fitness;
-	double* offspring = (double*) malloc(num_offspring * D * sizeof(double));
+	std::vector<double> fitness_inverted;
+
+	double x_min = Y[0];
+	double x_max = Y[0];
+	double y_min = Y[1];
+	double y_max = Y[1];
+
+	for (int n = 1; n < N; n++) {
+		for (int d = 0; d < D; d++) {
+			if (d == 0) {
+				if (x_min > Y[n * D + d]) x_min = Y[n * D + d];
+				if (x_max < Y[n * D + d]) x_max = Y[n * D + d];
+			}
+			else {
+				if (y_min > Y[n * D + d]) y_min = Y[n * D + d];
+				if (y_max < Y[n * D + d]) y_max = Y[n * D + d];
+			}
+		}
+	}
+
+	printf("dimensions of the map:\nx_min= %f\nx_max= %f\ny_min= %f\ny_max= %f\n", x_min, x_max, y_min, y_max);
+
+	double x_range = x_max - x_min;
+	double y_range = y_max - y_min;
+
+	double* offspring = (double*) malloc((num_offspring+pop_size) * D * sizeof(double));
 	//double* fitness = (*double) calloc(popsize + num_offspring, sizeof(double));
 
 	double* DD = (double*)malloc(N * N * sizeof(double));
@@ -2221,14 +2429,23 @@ void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, in
 			for (int i = 0; i < N * N; i++) Q[i] /= sum_Q;
 
 			// minus to convert maximization into minimization
-			double fitness_i = -costFunc(P, N, Q);
+			double fitness_i = costFunc(P, N, Q);
 			fitness.push_back(fitness_i);
+			fitness_inverted.push_back(1 / fitness_i);
 		}
 
-		double total_fitness = .0;
+		double total_inverted_fitness = .0;
 		for (unsigned int i = 0; i < fitness.size(); ++i) {
-			total_fitness += fitness[i];
+			total_inverted_fitness += 1/fitness[i];
 		}
+
+		int parent_in_offspring_buffer = 0;
+		//copy parents to offspring malloc
+		for (int i = 0; i < pop_size * D; i++) {
+			offspring[i] = Y_genomes[n * D * pop_size + i];
+			parent_in_offspring_buffer++;
+		}
+
 
 		// create offspring
 		for (int o = 0; o < num_offspring; o++) {
@@ -2242,49 +2459,59 @@ void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, in
 
 			// parent 1
 			for (int i = 0; i < pop_size; i++) {
-				offset += fitness[i]/total_fitness;
+				offset += 1/fitness[i]/total_inverted_fitness;
 				if (rndNumber < offset) {
 					parent_one = i;
 					break;
 				}
 			}
 
-			rndNumber = rand() / (double)RAND_MAX;
-			offset = 0.0;
+			parent_two = parent_one;
+			while (parent_two == parent_one) {
+				rndNumber = rand() / (double)RAND_MAX;
+				offset = 0.0;
 
-			// parent 2
-			for (int i = 0; i < pop_size; i++) {
-				offset += fitness[i]/total_fitness;
-				if (rndNumber < offset) {
-					parent_two = i;
-					break;
+				// parent 2
+				for (int i = 0; i < pop_size; i++) {
+					offset += 1/fitness[i] / total_inverted_fitness;
+					if (rndNumber < offset) {
+						parent_two = i;
+						break;
+					}
 				}
 			}
 
 			// Uniform Crossover
 			for (int d = 0; d < D; d++) {
-				offspring[o * D + d] = Y_genomes[n * D * pop_size + parent_one * D + d];
-				offspring[o * D + d] += Y_genomes[n * D * pop_size + parent_two * D + d];
-				offspring[o * D + d] /= 2;
+				offspring[parent_in_offspring_buffer + o * D + d] = Y_genomes[n * D * pop_size + parent_one * D + d];
+				offspring[parent_in_offspring_buffer + o * D + d] += Y_genomes[n * D * pop_size + parent_two * D + d];
+				offspring[parent_in_offspring_buffer + o * D + d] /= 2;
 			}
 
-			// mutation 
+			// gaussian mutation 
 
-			for (int d = 0; d < D; d++) {
-				rndNumber = (rand() / (double)RAND_MAX) - .5;
-				offspring[o * D + d] *= (rndNumber + 1);
-			}
-
-			
+			rndNumber = rand() / (double)RAND_MAX;
+			if (rndNumber < .05) {
+				for (int d = 0; d < D; d++) {
+					if (d == 0) {
+						offspring[parent_in_offspring_buffer + o * D + d] =
+							min(max(randn(offspring[parent_in_offspring_buffer + o * D + d], x_range / 10), x_min), x_max);
+					}
+					else {
+						offspring[parent_in_offspring_buffer + o * D + d] =
+							min(max(randn(offspring[parent_in_offspring_buffer + o * D + d], y_range / 10), y_min), y_max);
+					}
+				}
+			}			
 		}
 
 		// empty fitness as we do no longer care for parents, they die
-		fitness.clear();
+		//fitness.clear();
 
 		// compute fitness of individuals
 		for (int o = 0; o < num_offspring; o++) {
 			for (int d = 0; d < D; d++) {
-				Y[n * D + d] = offspring[o * D + d];
+				Y[n * D + d] = offspring[parent_in_offspring_buffer + o * D + d];
 			}
 
 			updateEuclideanDistance(Y, N, n, D, DD, true);
@@ -2304,22 +2531,22 @@ void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, in
 
 			// for now, replace entire population by new one
 			// push back fitness to fitness vector
-			// minus to convert maximization into minimization
-			double fitness_i = -costFunc(P, N, Q);
+			double fitness_i = costFunc(P, N, Q);
 			fitness.push_back(fitness_i);
 		}
 
-		//override population to offspring
+		// override population to survivors
+		// order fitness to find best offspring
+		vector<pair<double, int>> fitness_ordered = sortArr(fitness, num_offspring + pop_size);
 
 		for (int o = 0; o < pop_size; o++) {
+			int survivor_index = fitness_ordered[o].second;
 			for (int d = 0; d < D; d++) {
-				Y_genomes[n * D * pop_size + o * D + d] = offspring[o * D + d];
+				Y_genomes[n * D * pop_size + o * D + d] = offspring[survivor_index * D + d];
 			}
 		}
 
-
-		// order fitness to find best offspring
-		vector<pair<double, int>> fitness_ordered = sortArr(fitness, num_offspring + pop_size);
+		// recover best survivor to Y
 
 		int best_index = fitness_ordered[0].second;
 
@@ -2327,21 +2554,7 @@ void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, in
 			Y[n * D + d] = offspring[best_index * D + d];
 		}
 
-		// Loop over all Y_genomes to obtain the new current population
 
-		//for (int i = 0; i < pop_size; i++) {
-		//	if (fitness_ordered) {
-		//		Y_genomes[n * D * pop_size + i * D + d]
-		//	}
-		//}
-
-		// compute survivors
-
-		//for (int i = 0; i < pop_size; i++) {
-		//	Y_genomes[n * D * pop_size + i * D + d] = offspring[i * D + d];
-		//}
-
-		//find best Y_genome to replace Y
 
 
 	}
@@ -2457,11 +2670,36 @@ static double randn() {
 	return x;
 }
 
+// Generates a Gaussian random number (with mean and sd)
+static double randn(double mean, double stdDev) {
+	static double spare;
+	static bool hasSpare = false;
+
+	if (hasSpare) {
+		hasSpare = false;
+		return spare * stdDev + mean;
+	}
+	else {
+		double u, v, s;
+		do {
+			u = (rand() / ((double)RAND_MAX)) * 2.0 - 1.0;
+			v = (rand() / ((double)RAND_MAX)) * 2.0 - 1.0;
+			s = u * u + v * v;
+		} while (s >= 1.0 || s == 0.0);
+		s = sqrt(-2.0 * log(s) / s);
+		spare = v * s;
+		hasSpare = true;
+		return mean + stdDev * u * s;
+	}
+}
+
+
+
 // Function that loads data from a t-SNE file
 // Note: this function does a malloc that should be freed elsewhere
 bool TSNE::load_data(double** data, int* n, int* d, double** initial_solution, int* no_dims, double* theta, double* perplexity, double* eta, double* momentum, double* final_momentum,
 					 int* rand_seed, int* max_iter, int* stop_lying_iter, int* restart_lying_iter, int* momentum_switch_iter, int* lying_factor, bool* skip_random_init,
-					 int* input_similarities, int* output_similarities, int* cost_function, int* optimization) {
+					 int* input_similarities, int* output_similarities, int* cost_function, int* optimization, int* freeze_index) {
 	// Open file, read first 2 integers, allocate memory, and read the data
     FILE *h;
 	if((h = fopen("data.dat", "r+b")) == NULL) {
@@ -2523,6 +2761,11 @@ bool TSNE::load_data(double** data, int* n, int* d, double** initial_solution, i
 
 	fread(optimization, sizeof(int), 1, h);									// optimization
 	printf("optimization = %d\n", *optimization);
+
+	// Freeze index
+
+	fread(freeze_index, sizeof(int), 1, h);									// freeze_index
+	printf("freeze index = %d\n", *freeze_index);
 
 	// Data and optional randseed/initial solution
 

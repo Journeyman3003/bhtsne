@@ -19,6 +19,9 @@ int main() {
 	int cost_function = 0; // 0 = KL
 	int optimization = 0; // 0 = gradient descent
 
+	// freeze index: adjust gradient only for points after that index
+	int freeze_index = 0;
+
 
 	//by default, conduct a random initialization
 	bool skip_random_init = false;
@@ -26,7 +29,7 @@ int main() {
     // Read the parameters and the dataset
 	if(TSNE::load_data(&data, &origN, &D, &Y, &no_dims, &theta, &perplexity, &eta, &momentum, &final_momentum, &rand_seed,
 		               &max_iter, &stop_lying_iter, &restart_lying_iter, &momentum_switch_iter, &lying_factor, &skip_random_init,
-					   &input_similarities, &output_similarities, &cost_function, &optimization)) {
+					   &input_similarities, &output_similarities, &cost_function, &optimization, &freeze_index)) {
 
 		// Make dummy landmarks
         N = origN;
@@ -42,7 +45,7 @@ int main() {
 
 		TSNE::run(data, N, D, Y, costs, landmarks, no_dims, perplexity, eta, momentum, final_momentum, theta, rand_seed, skip_random_init,
 			      max_iter, lying_factor, stop_lying_iter, restart_lying_iter, momentum_switch_iter, input_similarities, output_similarities,
-				  cost_function, optimization);
+				  cost_function, optimization, freeze_index);
 
 		// Save the results
 		// skipped for now as it is done after each 50 iterations within TSNE::run

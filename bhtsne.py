@@ -89,7 +89,8 @@ BUILDING_BLOCK_DICT = {
     "output_similarities":  {
         "student": 0,
         "chi": 1,
-        "studenthalf": 2
+        "studenthalf": 2,
+        "studentalpha": 3
     },
     "cost_function": {
         "KL": 0,
@@ -101,6 +102,9 @@ BUILDING_BLOCK_DICT = {
         "genetic": 1
     }
 }
+
+# Index for which points to keep fixed
+DEFAULT_FREEZE_INDEX = 0
 
 
 def _argparse():
@@ -157,7 +161,8 @@ def init_bh_tsne(samples, workdir, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL
                  restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
                  momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=DEFAULT_EXAGGERATION_FACTOR,
                  input_similarities=DEFAULT_BUILDING_BLOCK_INDEX, output_similarities=DEFAULT_BUILDING_BLOCK_INDEX,
-                 cost_function=DEFAULT_BUILDING_BLOCK_INDEX, optimization=DEFAULT_BUILDING_BLOCK_INDEX):
+                 cost_function=DEFAULT_BUILDING_BLOCK_INDEX, optimization=DEFAULT_BUILDING_BLOCK_INDEX,
+                 freeze_index=DEFAULT_FREEZE_INDEX):
 
     # apply PCA if desired
     if use_pca:
@@ -182,6 +187,9 @@ def init_bh_tsne(samples, workdir, no_dims=DEFAULT_NO_DIMS, initial_dims=INITIAL
                              lying_factor))
         # Write the building block instructions
         data_file.write(pack('iiii', input_similarities, output_similarities, cost_function, optimization))
+
+        # Write the freeze index
+        data_file.write(pack('i', freeze_index))
         # Then write the data
         for sample in samples:
             data_file.write(pack('{}d'.format(len(sample)), *sample))
@@ -375,7 +383,7 @@ def debug_bh_tsne_pre(data, data_name):
                  use_pca=DEFAULT_USE_PCA, max_iter=DEFAULT_MAX_ITERATIONS, stop_lying_iter=DEFAULT_STOP_LYING_ITERATION,
                  restart_lying_iter=DEFAULT_RESTART_LYING_ITERATION,
                  momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=1,
-                 input_similarities=2, output_similarities=DEFAULT_BUILDING_BLOCK_INDEX,
+                 input_similarities=DEFAULT_BUILDING_BLOCK_INDEX, output_similarities=3,
                  cost_function=DEFAULT_BUILDING_BLOCK_INDEX, optimization=DEFAULT_BUILDING_BLOCK_INDEX)
 
 
