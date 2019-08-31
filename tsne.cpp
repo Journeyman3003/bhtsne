@@ -59,11 +59,11 @@ static double randn();
 static double randn(double mean, double stdDev);
 
 // Exact gradients
-//static void computeExactGradientKL(double* P, double* Y, int N, int D, int freeze_index, double* dC);
+static void computeExactGradientKL(double* P, double* Y, int N, int D, int freeze_index, double* dC);
 // using ChiSq distributed output similarities Q
-//static void computeExactGradientKLChiSq(double* P, double* Y, int N, int D, double* dC);
+static void computeExactGradientKLChiSq(double* P, double* Y, int N, int D, double* dC);
 // using Student0.5 distributed output similarities Q
-//static void computeExactGradientKLStudentHalf(double* P, double* Y, int N, int D, double* dC);
+static void computeExactGradientKLStudentHalf(double* P, double* Y, int N, int D, double* dC);
 // using StudentAlpha distributed output similarities Q
 static void computeExactGradientKLStudentAlpha(double* P, double* Y, int N, int D, double alpha, double* dC);
 static void computeExactGradientRKL(double* P, double* Y, int N, int D, double* dC);
@@ -73,11 +73,11 @@ static void computeExactGradientJS(double* P, double* Y, int N, int D, double* d
 static void approximateExactGradient(double* P, double* Y, int N, int D, double* dC, double costFunc(double*, int, double*));
 
 // BH approximated gradients
-//static void computeApproxGradientKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, int freeze_index, double* dC, double theta);
+static void computeApproxGradientKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, int freeze_index, double* dC, double theta);
 // using ChiSq distributed output similarities Q
-//static void computeApproxGradientKLChiSq(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
+static void computeApproxGradientKLChiSq(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
 // using Student0.5 distributed output similarities Q
-//static void computeApproxGradientKLStudentHalf(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
+static void computeApproxGradientKLStudentHalf(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
 // using StudentAlpha distributed output similarities Q
 static void computeApproxGradientKLStudentAlpha(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double alpha, double* dC, double theta);
 static void computeApproxGradientRKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
@@ -346,16 +346,16 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 				default:
 					switch (output_similarities) {
 					case 1:
-						//computeExactGradientKLChiSq(P, Y, N, no_dims, dY);
+						computeExactGradientKLChiSq(P, Y, N, no_dims, dY);
 						break;
 					case 2:
-						//computeExactGradientKLStudentHalf(P, Y, N, no_dims, dY);
+						computeExactGradientKLStudentHalf(P, Y, N, no_dims, dY);
 						break;
 					case 3:
 						computeExactGradientKLStudentAlpha(P, Y, N, no_dims, alpha, dY);
 						break;
 					default:
-						//computeExactGradientKL(P, Y, N, no_dims, freeze_index, dY);
+						computeExactGradientKL(P, Y, N, no_dims, freeze_index, dY);
 						//approximateExactGradient(P, Y, N, no_dims, dY, evaluateExactErrorKL);
 						break;
 					}
@@ -375,15 +375,16 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 				default:
 					switch (output_similarities) {
 					case 1:
-						//computeApproxGradientKLChiSq(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+						computeApproxGradientKLChiSq(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
 						break;
 					case 2:
-						//computeApproxGradientKLStudentHalf(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+						computeApproxGradientKLStudentHalf(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
 						break;
 					case 3:
 						computeApproxGradientKLStudentAlpha(row_P, col_P, val_P, Y, N, no_dims, alpha, dY, theta);
+						break;
 					default:
-						//computeApproxGradientKL(row_P, col_P, val_P, Y, N, no_dims, freeze_index, dY, theta);
+						computeApproxGradientKL(row_P, col_P, val_P, Y, N, no_dims, freeze_index, dY, theta);
 						//approximateApproxGradient(row_P, col_P, val_P, Y, N, no_dims, dY, theta, evaluateApproxErrorKL);
 						break;
 					}
@@ -507,7 +508,7 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
     printf("Fitting performed in %4.2f seconds.\n", total_time);
 }
 
-/*
+
 // Compute gradient of the t-SNE cost function (KL - using Barnes-Hut algorithm)
 static void computeApproxGradientKL(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, int freeze_index, double* dC, double theta)
 {
@@ -631,7 +632,7 @@ void computeApproxGradientKLStudentHalf(unsigned int* inp_row_P, unsigned int* i
 	delete tree;
 
 }
-*/
+
 
 void computeApproxGradientKLStudentAlpha(unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double alpha, double* dC, double theta)
 {
@@ -843,7 +844,7 @@ static void approximateApproxGradient(unsigned int* inp_row_P, unsigned int* inp
 	}
 	free(costs); costs = NULL;
 }
-/*
+
 // Compute gradient of the t-SNE cost function (KL - exact)
 static void computeExactGradientKL(double* P, double* Y, int N, int D, int freeze_index, double* dC) {
 
@@ -991,7 +992,7 @@ void computeExactGradientKLStudentHalf(double* P, double* Y, int N, int D, doubl
 	free(DD); DD = NULL;
 	free(Q);  Q = NULL;
 }
-*/
+
 void computeExactGradientKLStudentAlpha(double* P, double* Y, int N, int D, double alpha, double* dC)
 {
 	// Make sure the current gradient contains zeros

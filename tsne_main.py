@@ -185,7 +185,7 @@ def load_data(data_identifier):
     elif data_identifier == FASHION_MNIST10000:
         return mnist.load_fashion_mnist_data(all_data=False, len_sample=10000)
     elif data_identifier == FASHION_MNIST20000:
-        return mnist.load_fashion_mnist_data(all_data=False, len_sample=10000)
+        return mnist.load_fashion_mnist_data(all_data=False, len_sample=20000)
     else:
         print("unsupported data identifier: " + data_identifier)
         print("Shutting down...")
