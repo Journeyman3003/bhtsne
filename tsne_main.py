@@ -349,9 +349,9 @@ if __name__ == "__main__":
         #bhtsne.debug_bh_tsne_pre(data, data_name)
         #quit()
         # bhtsne.debug_data_file("windows", 2500, 784)
-        embedding_dict = bhtsne.debug_bh_tsne_post()
-        bhtsne.plot_bh_tsne_post(embedding_dict, labels)
-        quit()
+        #embedding_dict = bhtsne.debug_bh_tsne_post()
+        #bhtsne.plot_bh_tsne_post(embedding_dict, labels)
+        #quit()
         # sanity check of error
         # np.sum(embedding_array[:, 2])
         # quit()
