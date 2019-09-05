@@ -3,6 +3,7 @@
 import matplotlib.pyplot as plt
 import math
 import numpy as np
+from mnist import load_fashion_mnist_data
 import scipy.stats as stats
 from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
@@ -11,6 +12,7 @@ import matplotlib as mpl
 import seaborn as sns
 from matplotlib.ticker import FormatStrFormatter
 import matplotlib.lines as mlines
+import json
 
 blue = (57 / 256, 106 / 256, 177 / 256)
 orange = (218 / 256, 124 / 256, 48 / 256)
@@ -207,13 +209,13 @@ def get_intersection(f, g):
     return np.argwhere(np.diff(np.sign(f - g))).flatten()
 
 
-def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values):
+def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha=1):
     mu = 0
     variance = 1
     sigma = math.sqrt(variance)
     x = np.linspace(x_lim_low, mu + x_lim_high * sigma, 10000)
 
-    idx = get_intersection(stats.norm.pdf(x, mu, sigma), stats.t.pdf(x, 1))[0]
+    idx = get_intersection(alpha * stats.norm.pdf(x, mu, sigma), stats.t.pdf(x, 1))[0]
 
 
     y_min = -0.019945552964581167
@@ -231,30 +233,36 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values):
     marker_adjustment = .03
 
     plt.figure(figsize=(10, 5))
-    plt.plot(x, stats.norm.pdf(x, mu, sigma), linestyle="-", color=blue, linewidth=1.5, label="Standard normal distribution")
+    plt.plot(x, alpha * stats.norm.pdf(x, mu, sigma), linestyle="-", color=blue, linewidth=1.5, label="Standard Gaussian distribution")
     plt.plot(x, stats.t.pdf(x, 1), linestyle="-", color=orange, linewidth=1.5, label="Student-t (df = 1) distribution")
-    plt.fill_between(x_1, stats.norm.pdf(x_1, mu, sigma), stats.t.pdf(x_1, 1), alpha=0.4, color=green)
-    plt.fill_between(x_2, stats.norm.pdf(x_2, mu, sigma), stats.t.pdf(x_2, 1), alpha=0.4, color=red)
+    plt.fill_between(x_1, alpha * stats.norm.pdf(x_1, mu, sigma), stats.t.pdf(x_1, 1), alpha=0.4, color=green)
+    plt.fill_between(x_2, alpha * stats.norm.pdf(x_2, mu, sigma), stats.t.pdf(x_2, 1), alpha=0.4, color=red)
     for x_val in x_values:
-        if x_val < 1.83:
-            a, =plt.plot([x_val, find_x_given_y(x_lim_low, x_lim_high, stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1) + marker_adjustment],
-                     [stats.norm.pdf(x_val, mu, sigma), stats.norm.pdf(x_val, mu, sigma)], linestyle='--', color=green)
-            b, =plt.plot(find_x_given_y(x_lim_low, x_lim_high, stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1) + marker_adjustment,
-                        stats.norm.pdf(x_val, mu, sigma), linestyle='',
+        d = None
+        if x_val < x[idx]:
+            a, =plt.plot([x_val, find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1) + marker_adjustment],
+                     [alpha * stats.norm.pdf(x_val, mu, sigma), alpha * stats.norm.pdf(x_val, mu, sigma)], linestyle='--', color=green)
+            b, =plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1) + marker_adjustment,
+                        alpha * stats.norm.pdf(x_val, mu, sigma), linestyle='',
                         marker='<', color=green, markersize=6, zorder=100)
+            highdim, = plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1), 0, linestyle='', markeredgewidth=1,
+                         marker="o", markerfacecolor=orange, markeredgecolor=orange, markersize=6, zorder=100, alpha=0.4)
+            lowdim, = plt.plot(x_val, alpha * stats.norm.pdf(0, mu, sigma), linestyle='', markeredgewidth=1,
+                         marker="o", markerfacecolor=blue, markeredgecolor=blue, markersize=6, zorder=100, alpha=0.4)
 
-
-
-            #c, =plt.plot(x_val, stats.norm.pdf(x_val, mu, sigma), linestyle='', markeredgewidth=1,
-            #            marker="o", markerfacecolor='none', markeredgecolor=green, markersize=6, zorder=100)
         else:
-            d, =plt.plot([x_val, find_x_given_y(x_lim_low, x_lim_high, stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1)- marker_adjustment],
-                     [stats.norm.pdf(x_val, mu, sigma), stats.norm.pdf(x_val, mu, sigma)], linestyle='--', color=red)
-            e, =plt.plot(find_x_given_y(x_lim_low, x_lim_high, stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1) - marker_adjustment,
-                        stats.norm.pdf(x_val, mu, sigma), linestyle='',
+            d, =plt.plot([x_val, find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1)- marker_adjustment],
+                     [alpha * stats.norm.pdf(x_val, mu, sigma), alpha * stats.norm.pdf(x_val, mu, sigma)], linestyle='--', color=red)
+            e, =plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1) - marker_adjustment,
+                        alpha * stats.norm.pdf(x_val, mu, sigma), linestyle='',
                         marker='>', color=red, markersize=6, zorder=100)
-            #f, =plt.plot(x_val, stats.norm.pdf(x_val, mu, sigma), linestyle='', markeredgewidth = 1,
-            #            marker="o", markerfacecolor='none', markeredgecolor=red, markersize=6, zorder=100)
+            highdim, = plt.plot(
+                find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1), 0,
+                linestyle='', markeredgewidth=1,
+                marker="o", markerfacecolor=orange, markeredgecolor=orange, markersize=6, zorder=100, alpha=0.4)
+            lowdim, = plt.plot(x_val, alpha * stats.norm.pdf(0, mu, sigma), linestyle='', markeredgewidth=1,
+                               marker="o", markerfacecolor=blue, markeredgecolor=blue, markersize=6, zorder=100,
+                               alpha=0.4)
 
         #linedict = dict(linestyles="-", linewidths=1, alpha=0.5)
 
@@ -271,14 +279,22 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values):
     for label in ax.yaxis.get_ticklabels()[::2]:
         label.set_visible(False)
 
-    handles = [(b,a,a), (d,d,e)]
-    handles_, labels = ax.get_legend_handles_labels()
+    handles = [(b,a,a)]
+    labels = ["Attractive force"]
+    if d is not None:
+        handles.append((d,d,e))
+        labels.append("Repulsive force")
+    handles_, labels_ = ax.get_legend_handles_labels()
+
+    handles.extend([highdim, lowdim])
+    labels.extend(["Neighboring observations' distances\naccording to Gaussian distribution",
+                   "Neighboring observations' distances\naccording to Student-t (df = 1) distribution"])
 
     handles_.extend(handles)
-    labels.extend(("Attractive force", "Repulsive force"))
+    labels_.extend(labels)
 
 
-    ax.legend(handles=handles_, labels=labels, loc='upper right',
+    ax.legend(handles=handles_, labels=labels_, loc='center right', fontsize=15,
               handler_map={tuple: mpl.legend_handler.HandlerTuple(None)})
 
     #plt.legend()
@@ -286,18 +302,113 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values):
     mpl.rc('text', usetex=True)
     mpl.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
 
-    plt.xlabel(r"Pairwise distances  $|| \mathbf{x}_i - \mathbf{x}_j ||^2$")
-    plt.ylabel("Neighboring probabilities")
+    plt.xlabel(r"Pairwise distances $|| \mathbf{y}_i - \mathbf{y}_j ||^2$", fontsize=15)
+    plt.ylabel("Neighboring probabilities", fontsize=15)
     ax.tick_params(right=False, top=False, labelright=False, labeltop=True)
-    plt.title("Pairwise distances $|| \mathbf{y}_i - \mathbf{y}_j ||^2$")
+    plt.title("Pairwise distances $|| \mathbf{x}_i - \mathbf{x}_j ||^2$", fontsize=15)
     sns.despine(left=True, right=True, bottom=True, top=True)
-    plt.savefig("gaussian_student_distance_shift", bbox_inches="tight")
+    plt.savefig("gaussian_student_distance_shift_alpha_{}".format(str(alpha)), bbox_inches="tight")
     plt.show()
 
 
+def plot_fashion_mnist():
+
+    fashion_labeldict = {
+        0: 'T-shirt/top',
+        1: 'Trouser',
+        2: 'Pullover',
+        3: 'Dress',
+        4: 'Coat',
+        5: 'Sandal',
+        6: 'Shirt',
+        7: 'Sneaker',
+        8: 'Bag',
+        9: 'Ankle boot'
+    }
+
+    data, labels = load_fashion_mnist_data(False, len_sample=400)
+    n = 20
+    fig, axes = plt.subplots(2, n, figsize=(2 * n, 5))
+    for label in fashion_labeldict.keys():
+        for i in range(n):
+            axes[0, i].imshow(data[i].reshape(28, 28), cmap='gray')
+            axes[1, i].imshow(data[n + i].reshape(28, 28), cmap='gray')
+        for ax in axes.flatten():
+            ax.get_xaxis().set_visible(False)
+            ax.get_yaxis().set_visible(False)
+        plt.savefig("fashion_test", bbox_inches="tight")
+        plt.show()
+
+
+def metric_plot(metric_json, plot_title):
+    sns.set(style="whitegrid")
+    fig, ax = plt.subplots(figsize=(8, 8))
+
+    ax2 = ax.twinx()
+
+    for metric in metric_json.keys():
+        if metric != "1NNgeneralization_error":
+            x = np.array(list(metric_json[metric].keys()))
+            x = x.astype(int)
+            y = np.array(list(metric_json[metric].values()))
+
+            # correct error values
+            if metric == "cost_function_value":
+                for i, x_val in enumerate(x):
+                    if int(x_val) < 250:
+                        y[i] = y[i]/12 - np.log(12)
+
+                ax.plot(x, y, linestyle="-", color=blue, linewidth=1.5,
+                        label="KL-cost")
+                ax.set_ylabel('KL-cost', color=blue, fontsize=15)
+            else:
+                ax2.plot(x, y, linestyle="-", color=orange, linewidth=1.5)
+                ax2.set_ylabel('Trustworthiness T(12)', color=orange, fontsize=15)
+            #if metric == "cost_function_value":
+            #    plt.plot(x, np.repeat(1.17, len(x)), linestyle="--", color=blue, linewidth=1.5,
+            #             label="Approximate local optimum")
+    ax.set_xlabel('Iteration', fontsize=15)
+
+    ax.set(xlim=(0, 1000), ylim=(0, 5))
+    ax2.set(ylim=(0.5, 1))
+
+    ax.tick_params(
+        axis='y',  # changes apply to the x-axis
+        which='both',  # both major and minor ticks are affected
+        left=False,  # ticks along the bottom edge are off
+        labelleft=True,
+        labelsize=12,
+        labelcolor=blue)
+
+    ax.tick_params(
+        axis='x',  # changes apply to the x-axis
+        labelsize=12)
+
+    ax2.tick_params(
+        axis='y',  # changes apply to the x-axis
+        which='both',  # both major and minor ticks are affected
+        right=False,  # ticks along the bottom edge are off
+        labelright=True,
+        labelsize=12,
+        labelcolor=orange)
+
+    #sns.despine(left=False, right=True, bottom=False, top=True)
+    #plt.legend(loc='upper right', fontsize=15)
+    plt.savefig(plot_title, bbox_inches="tight")
+    plt.show()
+
+
+
 if __name__ == '__main__':
-    plot_gaussian_student_distance_shift(0, 5, 1, 1.5, 2, 2.5)
+    #plot_gaussian_student_distance_shift(0, 6, 1, 1.5, 2, 2.5, alpha=4)
 
     #plot_pca_new_directions()
     #plot_lda()
     #plot_lle()
+
+    #plot_fashion_mnist()
+
+    with open('C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\iterations\\1000\\fashion_mnist7000\\1\\bh_tsne_result-14-08-2019_09-23-14-metrics.json', 'r') as f:
+        metric_json = json.load(f)
+
+    metric_plot(metric_json, "KLT12tsnemaxiter")

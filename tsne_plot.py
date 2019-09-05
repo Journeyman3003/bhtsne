@@ -2,6 +2,7 @@
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import seaborn as sns
 import os
 import bhtsne
@@ -10,6 +11,19 @@ import numpy as np
 import glob
 import itertools
 import operator
+
+FASHION_LABELDICT = {
+    0: 'T-shirt/top',
+    1: 'Trouser',
+    2: 'Pullover',
+    3: 'Dress',
+    4: 'Coat',
+    5: 'Sandal',
+    6: 'Shirt',
+    7: 'Sneaker',
+    8: 'Bag',
+    9: 'Ankle boot'
+}
 
 # directory structure
 CWD = os.path.dirname(os.path.realpath(__file__))
@@ -39,16 +53,36 @@ def get_bh_tsne_grouped_result_generator(root_dir=RESULT_DIR, data_identifier='m
         yield _key, list(_grouper)
 
 
-def plot_bh_tsne_result(_data, _labels, _legend="full", _palette="bright", _ax=None):
+def plot_bh_tsne_result(_data, _labels, _legend="full", rearrange_legend=False, _palette="bright", _ax=None, axes_off=True):
     #plt.box(False)
     sns.despine()
     sns.set_style("white")
+
+    palette = sns.color_palette(_palette, n_colors=10)
+    color_dict = {FASHION_LABELDICT[i]: palette[i] for i in FASHION_LABELDICT.keys()}
+
     _g = sns.scatterplot(x=_data[:, 0],
                          y=_data[:, 1],
                          hue=_labels,
                          legend=_legend,
-                         palette=sns.color_palette(_palette),
+                         palette=color_dict,
                          ax=_ax)
+
+    if _legend is not None:
+
+        _handles, _labels = _ax.get_legend_handles_labels()
+
+        if rearrange_legend:
+            new_order = [1, 6, 3, 2, 8, 5, 7, 4, 9, 0]
+
+            _handles = [_handles[i] for i in new_order]
+            _labels = [_labels[i] for i in new_order]
+
+        _ax.legend(_handles, _labels, loc=3, prop=dict(size=15))
+        #_ax.legend()
+
+    #_g.legend(loc='center left', bbox_to_anchor=(1.25, 0.5), ncol=1)
+    #_g.legend.set_title("Classes")
 
     x_min, x_max = get_axlims(_data[:, 0], .1)
     y_min, y_max = get_axlims(_data[:, 1], .1)
@@ -59,6 +93,12 @@ def plot_bh_tsne_result(_data, _labels, _legend="full", _palette="bright", _ax=N
     else:
         _ax.set_xlim(x_min, x_max)
         _ax.set_ylim(y_min, y_max)
+
+    if axes_off:
+        if _ax is None:
+            plt.gca().axis('off')
+        else:
+            _ax.axis('off')
 
     return _g
 
@@ -186,16 +226,86 @@ def get_axlims(series, marginfactor):
     return minlim, maxlim
 
 
+#def plot_images():
+#    for image, (x, y) in zip(inputs, coords):
+#        im = OffsetImage(image.reshape(28, 28), zoom=1, cmap='gray')
+#        ab = AnnotationBbox(im, (x, y), xycoords='data', frameon=False)
+#        ax.add_artist(ab)
+#    ax.update_datalim(coords)
+#    ax.autoscale()
+
+def load_result_and_plot_single(_input_data, _labels, path_to_bh_tsne_result, mode=0, legend=None, rearrange_legend=False):
+
+    # assuming only a single result file
+    files = glob.glob(os.path.join(path_to_bh_tsne_result, "**/*.pickle"))
+
+    # for fashion_mnist= adjust labels
+    fashion_labels = [FASHION_LABELDICT[l] for l in _labels]
+
+    for file in files:
+        embedding_dict = bhtsne.read_bh_tsne_result(file)
+        for key in embedding_dict.keys():
+            data = embedding_dict[key]
+
+            dirname = os.path.dirname(file)
+            dirname = dirname.replace("results", "plots\\single")
+            try:
+                os.makedirs(dirname)
+            except FileExistsError:
+                # directory already exists
+                pass
+
+            if mode == 0 or mode == 1:
+                fig, ax = plt.subplots(figsize=(8, 8))
+
+                plot_bh_tsne_result(_data=data, _labels=fashion_labels, _legend="full" if key[0] == 1000 else legend,
+                                    rearrange_legend=rearrange_legend, _palette="bright", _ax=ax, axes_off=True)
+                filename = os.path.splitext(file)[0] + "-iteration{}".format(str(key[0]))
+                filename = filename.replace("results", "plots\\single")
+
+                plt.savefig(filename, bbox_inches="tight")
+
+                plt.close()
+
+            if mode == 0 or mode == 2:
+                fig, ax = plt.subplots(figsize=(8, 8))
+                # just a sample of 300 as images
+                _sample_input_data, _sample_labels = mnist.sample_data(_input_data, _labels, num_samples=300)
+                _sample_embedding_data, _ = mnist.sample_data(data, _labels, num_samples=300)
+                color_palette = sns.color_palette("bright", n_colors=10)
+                _sample_labels = _sample_labels.astype(int)
+
+                for image, (x, y), label in zip(_sample_input_data, _sample_embedding_data[:, 0:2], _sample_labels):
+                    im = OffsetImage(image.reshape(28, 28), zoom=1, cmap='gray')
+                    ab = AnnotationBbox(im, (x, y), xycoords='data', frameon=True, pad=.0,
+                                        bboxprops=dict(edgecolor=color_palette[label], facecolor=color_palette[label]))
+                    ax.add_artist(ab)
+                ax.update_datalim(data[:, 0:2])
+                ax.autoscale()
+                ax.axis('off')
+
+                filename = os.path.splitext(file)[0] + "-iteration{}-images".format(str(key[0]))
+                filename = filename.replace("results", "plots\\single")
+                plt.savefig(filename, bbox_inches="tight")
+
+                plt.close()
+
+
+
+
 
 if __name__ == "__main__":
-    #if argv < 2:
-    #    print("Please specify the .pickle file to be read: tsne_plot.py <.pickle-file>!")
 
-    _, labels = mnist.load_fashion_mnist_data(False, len_sample=10000)
-    #_, labels = mnist.load_fashion_mnist_data()
+    data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
+    #data, labels = mnist.load_fashion_mnist_data(True)
 
-    load_result_and_plot_comparison(_labels=labels, root_dir=os.path.join(RESULT_DIR, "tSNE", "buildingblocks", "input_similarities", "student"),
-                                    plot_title_from_filepath_index=-6, data_identifier="fashion_mnist10000")
+    #load_result_and_plot_comparison(_labels=labels, root_dir=os.path.join(RESULT_DIR, "tSNE", "parametertuning",
+    #                                                                      "output_similarities", "studentalpha"),
+    #                                plot_title_from_filepath_index=-6, data_identifier="fashion_mnist")
+
+    load_result_and_plot_single(data, labels,
+                                "C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\perplexity\\2\\fashion_mnist7000",
+                                mode=1, legend=None, rearrange_legend=False)
 
     # basepath1 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\unoptimized sptree\\1"
     # basepath2 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\optimized sptree\\1"

@@ -2,7 +2,6 @@ from keras.layers import Input, Dense, Conv2D, MaxPooling2D, UpSampling2D, Batch
 from keras.models import Model, load_model
 from keras.callbacks import ReduceLROnPlateau
 from keras import optimizers
-import matplotlib.pyplot as plt
 import os
 import pickle
 import numpy as np

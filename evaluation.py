@@ -58,18 +58,18 @@ def compute_metrics(original_data, embedding_dict, labels):
     for key in embedding_dict.keys():
 
         # 1NN generalization error
-        labels_predict = predict_labels(embedding_dict[key], labels)
-        generalization_error = compute_generalization_error(labels, labels_predict)
-        metric_dict['1NNgeneralization_error'][key[0]] = generalization_error
+        #labels_predict = predict_labels(embedding_dict[key], labels)
+        #generalization_error = compute_generalization_error(labels, labels_predict)
+        #metric_dict['1NNgeneralization_error'][key[0]] = generalization_error
 
         if len(labels) < 20000:
             # trustworthiness (12)
-            trustw = trustworthiness(original_data, embedding_dict[key][:, 0:2], n_neighbors=12)
+            trustw = trustworthiness(original_data, embedding_dict[key][:, 0:2], n_neighbors=50)
             metric_dict['trustworthiness'][key[0]] = trustw
 
         # cost function value
-        cost = sum(embedding_dict[key][:, 2])
-        metric_dict['cost_function_value'][key[0]] = cost
+        #cost = sum(embedding_dict[key][:, 2])
+        #metric_dict['cost_function_value'][key[0]] = cost
 
     return metric_dict
 
@@ -101,7 +101,7 @@ def evaluate_bh_tsne_results(data, labels, root_dir=RESULT_DIR, data_identifier=
 
     for result in result_list:
         print("Computing metrics for result file at {}".format(result))
-        filename = os.path.splitext(result)[0] + '-metrics.json'
+        filename = os.path.splitext(result)[0] + '-metricsT50.json'
 
         embedding_dict = read_bh_tsne_result(result)
 
@@ -115,7 +115,7 @@ if __name__ == '__main__':
 
     data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
 
-    evaluate_bh_tsne_results(data, labels, data_identifier='fashion_mnist7000', algorithm='tSNE', task='RKL')
+    evaluate_bh_tsne_results(data, labels, data_identifier='fashion_mnist7000', algorithm='tSNE', task='parametertuning')
 
 
 

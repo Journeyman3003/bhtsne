@@ -44,6 +44,8 @@
 
 using namespace std;
 
+const unsigned int POP_SIZE = 100;
+
 static double sign(double x) { return (x == .0 ? .0 : (x < .0 ? -1.0 : 1.0)); }
 
 static void zeroMean(double* X, int N, int D);
@@ -123,6 +125,9 @@ static void symmetrizeMatrix(unsigned int** row_P, unsigned int** col_P, double*
 
 // genetic algorithm optimizer
 static void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, int N, int D, double costFunc(double*, int, double*));
+static void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double costFunc(double*, double*, int, int, double*));
+static void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta,
+	double costFunc(unsigned int*, unsigned int*, double*, double*, int, int, double, double*));
 static vector<pair<double, int>> sortArr(vector<double> arr, int n);
 
 // Perform t-SNE
@@ -159,13 +164,6 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 	if (dY == NULL || uY == NULL || gains == NULL) { printf("Memory allocation failed!\n"); exit(1); }
 	for (int i = 0; i < N * no_dims; i++)    uY[i] = .0;
 	for (int i = 0; i < N * no_dims; i++) gains[i] = 1.0;
-
-	// Genetic Algorithm
-	double* Y_genomes = NULL;
-	//10 = pop_size
-	if (optimization == 1) {
-		Y_genomes = (double*)malloc(N * no_dims * 10 * sizeof(double));
-	}
 
     // Normalize input data (to prevent numerical problems)
     printf("Computing input similarities...\n");
@@ -240,24 +238,26 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 
     if(exact) printf("Input similarities computed in %4.2f seconds!\nLearning embedding...\n", (float) (end - start) / CLOCKS_PER_SEC);
     else printf("Input similarities computed in %4.2f seconds (sparsity = %f)!\nLearning embedding...\n", (float) (end - start) / CLOCKS_PER_SEC, (double) row_P[N] / ((double) N * (double) N));
-    
-	if (optimization == 1) {
-		printf("Initializing Y_genomes at random!\n");
-		for (int i = 0; i < N * no_dims * 10; i++) Y_genomes[i] = randn() * .0001;
-	}
 
-	// Initialize solution (randomly)
-	if (skip_random_init != true) {
-		printf("Initializing Y at random!\n");
-		for (int i = 0; i < N * no_dims; i++) Y[i] = randn() * .0001;
+	//always randomly init Y for genetic optimizer
+	if (optimization == 1) {
+		printf("Initializing Y (Chromosomes) at random!\n");
+		for (int i = 0; i < N * no_dims * POP_SIZE; i++) Y[i] = randn() * .0001;
 	}
+	// Initialize solution (randomly)
 	else {
-		printf("Skip random initialization of Y!\n");
-		// check whether a freeze index is passed that is > 0
-		// which would indicate the remainder freeze_index < n < N to be initialized at random
-		if (freeze_index != 0) {
-			printf("Still, test observations are initialized at random!\n");
-			for (int i = freeze_index * no_dims; i < N * no_dims; i++) Y[i] = randn() * .0001;
+		if (skip_random_init != true) {
+			printf("Initializing Y at random!\n");
+			for (int i = 0; i < N * no_dims; i++) Y[i] = randn() * .0001;
+		}
+		else {
+			printf("Skip random initialization of Y!\n");
+			// check whether a freeze index is passed that is > 0
+			// which would indicate the remainder freeze_index < n < N to be initialized at random
+			if (freeze_index != 0) {
+				printf("Still, test observations are initialized at random!\n");
+				for (int i = freeze_index * no_dims; i < N * no_dims; i++) Y[i] = randn() * .0001;
+			}
 		}
 	}
 
@@ -401,10 +401,10 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 		}
 		else {
 			if (exact) {
-				computeExactGeneticOptimization(P, Y, Y_genomes, N, no_dims, evaluateExactErrorKL);
+				computeExactGeneticOptimization(P, Y, N, no_dims, evaluateExactErrorKL);
 			}
 			else {
-				NULL;
+				computeApproxGeneticOptimization(row_P, col_P, val_P, Y, N, no_dims, theta, evaluateApproxErrorKL);
 			}
 		}
 
@@ -2568,6 +2568,325 @@ void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, in
 	//free(fitness);
 }
 
+void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double costFunc(double*, double*, int, int, double*))
+{
+	// offspring will contain parents as well
+	double* offspring = (double*)malloc(2 * N * POP_SIZE * D * sizeof(double));
+	if (offspring == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	std::vector<double> fitness_vector;
+	std::vector<double> fitness_inverted;
+
+	//copy parents to offspring malloc
+	for (int i = 0; i < N * D * POP_SIZE; i++) {
+		offspring[i] = Y[i];
+	}
+
+	double fitness = .0;
+
+	double* costs = (double*)calloc(N, sizeof(double));
+	if (costs == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+
+	double x_min = Y[0];
+	double x_max = Y[0];
+	double y_min = Y[1];
+	double y_max = Y[1];
+
+	for (int n = 1; n < N; n++) {
+		for (int d = 0; d < D; d++) {
+			if (d == 0) {
+				if (x_min > Y[n * D + d]) x_min = Y[n * D + d];
+				if (x_max < Y[n * D + d]) x_max = Y[n * D + d];
+			}
+			else {
+				if (y_min > Y[n * D + d]) y_min = Y[n * D + d];
+				if (y_max < Y[n * D + d]) y_max = Y[n * D + d];
+			}
+		}
+	}
+
+	//printf("dimensions of the map:\nx_min= %f\nx_max= %f\ny_min= %f\ny_max= %f\n", x_min, x_max, y_min, y_max);
+
+	double x_range = x_max - x_min;
+	double y_range = y_max - y_min;
+
+	// compute fitness of individuals 
+	for (int i = 0; i < POP_SIZE; i++) {
+		// set costs to 0
+		for (int j = 0; j < N; j++) costs[j] = 0.0;
+		fitness = costFunc(P, Y + (i * D * N), N, D, costs);
+		fitness_vector.push_back(fitness);
+	}
+
+	// compute total inverted fitness
+	double total_inverted_fitness = .0;
+	for (unsigned int i = 0; i < fitness_vector.size(); ++i) {
+		total_inverted_fitness += 1 / fitness_vector[i];
+	}
+
+	// create offspring
+	for (int o = 0; o < POP_SIZE; o++) {
+		// roulette wheel selection of parents
+		unsigned int parent_one = 0;
+		unsigned int parent_two = 0;
+
+		double rndNumber = rand() / (double)RAND_MAX;
+		double offset = 0.0;
+
+		// parent 1
+		for (int i = 0; i < POP_SIZE; i++) {
+			offset += 1 / fitness_vector[i] / total_inverted_fitness;
+			if (rndNumber < offset) {
+				parent_one = i;
+				break;
+			}
+		}
+
+		parent_two = parent_one;
+		while (parent_two == parent_one) {
+			rndNumber = rand() / (double)RAND_MAX;
+			offset = 0.0;
+
+			// parent 2
+			for (int i = 0; i < POP_SIZE; i++) {
+				offset += 1 / fitness_vector[i] / total_inverted_fitness;
+				if (rndNumber < offset) {
+					parent_two = i;
+					break;
+				}
+			}
+		}
+
+		// average crossover
+		/*
+		for (int i = 0; i < D * N; i++) {
+			offspring[POP_SIZE * D * N + o * D * N + i] = offspring[parent_one * D * N + i];
+			offspring[POP_SIZE * D * N + o * D * N + i] += offspring[parent_two * D * N + i];
+			offspring[POP_SIZE * D * N + o * D * N + i] /= 2;
+		}
+		*/
+		
+		// random uniform crossover
+		for (int i = 0; i < D * N; i++) {
+			rndNumber = rand() / (double)RAND_MAX;
+			if (rndNumber > .5) {
+				offspring[POP_SIZE * D * N + o * D * N + i] = offspring[parent_one * D * N + i];
+			}
+			else {
+				offspring[POP_SIZE * D * N + o * D * N + i] = offspring[parent_two * D * N + i];
+			}
+		}
+
+		// gaussian mutation 
+
+		for (int i = 0; i < D * N; i++) {
+			rndNumber = rand() / (double)RAND_MAX;
+			if (rndNumber < .05) {
+				for (int d = 0; d < D; d++) {
+					if (d == 0) {
+						offspring[POP_SIZE * D * N + o * D * N + i] =
+							//min(max(randn(offspring[POP_SIZE * D * N + o * D * N + i], x_range / 10), x_min), x_max);
+							randn(offspring[POP_SIZE * D * N + o * D * N + i], x_range / 10);
+					}
+					else {
+						offspring[POP_SIZE * D * N + o * D * N + i] =
+							//min(max(randn(offspring[POP_SIZE * D * N + o * D * N + i], y_range / 10), y_min), y_max);
+							randn(offspring[POP_SIZE * D * N + o * D * N + i], y_range / 10);
+					}
+				}
+			}
+		}
+	}
+	// compute fitness of newly generated offspring
+	for (int i = 0; i < POP_SIZE; i++) {
+		// set costs to 0
+		for (int j = 0; j < N; j++) costs[j] = 0.0;
+		fitness = costFunc(P, offspring + (POP_SIZE * D * N + i * D * N), N, D, costs);
+		fitness_vector.push_back(fitness);
+	}
+
+	// order fitness to find best offspring
+	vector<pair<double, int>> fitness_ordered = sortArr(fitness_vector, 2 * POP_SIZE);
+
+	// debug
+	//for (int p = 0; p < fitness_ordered.size(); p++) {
+	//	printf("cost of individual %i is %f\n", fitness_ordered[p].second, fitness_ordered[p].first);
+	//}
+
+	// recover best survivors to Y
+
+	for (int i = 0; i < POP_SIZE; i++) {
+		int offspring_index = fitness_ordered[i].second;
+
+		for (int nd = 0; nd < N * D; nd++) {
+			Y[i * N * D + nd] = offspring[offspring_index * N * D + nd];
+		}
+	}
+
+	// clear memory
+	free(offspring); offspring = NULL;
+}
+
+//static double evaluateApproxErrorKL(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
+void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta,
+	double costFunc(unsigned int*, unsigned int*, double*, double*, int, int, double, double*))
+{
+	// offspring will contain parents as well
+	double* offspring = (double*)malloc(2 * N * POP_SIZE * D * sizeof(double));
+	if (offspring == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	std::vector<double> fitness_vector;
+	std::vector<double> fitness_inverted;
+
+	//copy parents to offspring malloc
+	for (int i = 0; i < N * D * POP_SIZE; i++) {
+		offspring[i] = Y[i];
+	}
+
+	double fitness = .0;
+
+	double* costs = (double*)calloc(N, sizeof(double));
+	if (costs == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+
+	double x_min = Y[0];
+	double x_max = Y[0];
+	double y_min = Y[1];
+	double y_max = Y[1];
+
+	for (int n = 1; n < N; n++) {
+		for (int d = 0; d < D; d++) {
+			if (d == 0) {
+				if (x_min > Y[n * D + d]) x_min = Y[n * D + d];
+				if (x_max < Y[n * D + d]) x_max = Y[n * D + d];
+			}
+			else {
+				if (y_min > Y[n * D + d]) y_min = Y[n * D + d];
+				if (y_max < Y[n * D + d]) y_max = Y[n * D + d];
+			}
+		}
+	}
+
+	//printf("dimensions of the map:\nx_min= %f\nx_max= %f\ny_min= %f\ny_max= %f\n", x_min, x_max, y_min, y_max);
+
+	double x_range = x_max - x_min;
+	double y_range = y_max - y_min;
+
+	// compute fitness of individuals 
+	for (int i = 0; i < POP_SIZE; i++) {
+		// set costs to 0
+		for (int j = 0; j < N; j++) costs[j] = 0.0;
+		fitness = costFunc(row_P, col_P, val_P, Y + (i * D * N), N, D, theta, costs);
+		fitness_vector.push_back(fitness);
+	}
+
+	// compute total inverted fitness
+	double total_inverted_fitness = .0;
+	for (unsigned int i = 0; i < fitness_vector.size(); ++i) {
+		total_inverted_fitness += 1 / fitness_vector[i];
+	}
+
+	// create offspring
+	for (int o = 0; o < POP_SIZE; o++) {
+		// roulette wheel selection of parents
+		unsigned int parent_one = 0;
+		unsigned int parent_two = 0;
+
+		double rndNumber = rand() / (double)RAND_MAX;
+		double offset = 0.0;
+
+		// parent 1
+		for (int i = 0; i < POP_SIZE; i++) {
+			offset += 1 / fitness_vector[i] / total_inverted_fitness;
+			if (rndNumber < offset) {
+				parent_one = i;
+				break;
+			}
+		}
+
+		parent_two = parent_one;
+		while (parent_two == parent_one) {
+			rndNumber = rand() / (double)RAND_MAX;
+			offset = 0.0;
+
+			// parent 2
+			for (int i = 0; i < POP_SIZE; i++) {
+				offset += 1 / fitness_vector[i] / total_inverted_fitness;
+				if (rndNumber < offset) {
+					parent_two = i;
+					break;
+				}
+			}
+		}
+
+		// average crossover
+		/*
+		for (int i = 0; i < D * N; i++) {
+			offspring[POP_SIZE * D * N + o * D * N + i] = offspring[parent_one * D * N + i];
+			offspring[POP_SIZE * D * N + o * D * N + i] += offspring[parent_two * D * N + i];
+			offspring[POP_SIZE * D * N + o * D * N + i] /= 2;
+		}
+		*/
+
+		// random uniform crossover
+		for (int i = 0; i < D * N; i++) {
+			rndNumber = rand() / (double)RAND_MAX;
+			if (rndNumber > .5) {
+				offspring[POP_SIZE * D * N + o * D * N + i] = offspring[parent_one * D * N + i];
+			}
+			else {
+				offspring[POP_SIZE * D * N + o * D * N + i] = offspring[parent_two * D * N + i];
+			}
+		}
+
+		// gaussian mutation 
+
+		for (int i = 0; i < D * N; i++) {
+			rndNumber = rand() / (double)RAND_MAX;
+			if (rndNumber < .05) {
+				for (int d = 0; d < D; d++) {
+					if (d == 0) {
+						offspring[POP_SIZE * D * N + o * D * N + i] =
+							//min(max(randn(offspring[POP_SIZE * D * N + o * D * N + i], x_range / 10), x_min), x_max);
+							randn(offspring[POP_SIZE * D * N + o * D * N + i], x_range / 10);
+					}
+					else {
+						offspring[POP_SIZE * D * N + o * D * N + i] =
+							//min(max(randn(offspring[POP_SIZE * D * N + o * D * N + i], y_range / 10), y_min), y_max);
+							randn(offspring[POP_SIZE * D * N + o * D * N + i], y_range / 10);
+					}
+				}
+			}
+		}
+	}
+	// compute fitness of newly generated offspring
+	for (int i = 0; i < POP_SIZE; i++) {
+		// set costs to 0
+		for (int j = 0; j < N; j++) costs[j] = 0.0;
+		
+		fitness = costFunc(row_P, col_P, val_P, offspring + (POP_SIZE * D * N + i * D * N), N, D, theta, costs);
+		fitness_vector.push_back(fitness);
+	}
+
+	// order fitness to find best offspring
+	vector<pair<double, int>> fitness_ordered = sortArr(fitness_vector, 2 * POP_SIZE);
+
+	// debug
+	//for (int p = 0; p < fitness_ordered.size(); p++) {
+	//	printf("cost of individual %i is %f\n", fitness_ordered[p].second, fitness_ordered[p].first);
+	//}
+
+	// recover best survivors to Y
+
+	for (int i = 0; i < POP_SIZE; i++) {
+		int offspring_index = fitness_ordered[i].second;
+
+		for (int nd = 0; nd < N * D; nd++) {
+			Y[i * N * D + nd] = offspring[offspring_index * N * D + nd];
+		}
+	}
+
+	// clear memory
+	free(offspring); offspring = NULL;
+}
+
 static vector<pair<double, int>> sortArr(vector<double> arr, int n)
 {
 	// Vector to store element 
@@ -2777,7 +3096,14 @@ bool TSNE::load_data(double** data, int* n, int* d, double** initial_solution, i
 	fread(rand_seed, sizeof(int), 1, h);
 	printf("Random seed set to %i\n", *rand_seed);							// random seed (even if no seed is passed, it is set to -1 (thanks to fread default passing amount of successfully read elements)
 	
-	*initial_solution = (double*)malloc(*n * *no_dims * sizeof(double));
+	// create initial solution malloc according to whether genetic optimizer is used or not
+	if (*optimization == 1) {
+		*initial_solution = (double*)malloc(*n * *no_dims * POP_SIZE * sizeof(double));
+	}
+	else {
+		*initial_solution = (double*)malloc(*n * *no_dims  * sizeof(double));
+	}
+
 	if (*initial_solution == NULL) { printf("Memory allocation failed!\n"); exit(1); }
 	fread(*initial_solution, sizeof(double), *n * *no_dims, h);				// the initial solution
 
