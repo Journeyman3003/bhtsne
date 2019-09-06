@@ -447,7 +447,8 @@ if __name__ == "__main__":
                 tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
                               data_result_subdirectory=data_name,
                               result_base_dir=os.path.join(operation_dir, directory, PARAM_DICT[param][1]),
-                              initial_embedding_method=initial_embedding, **kwargs)
+                              initial_embedding_method=initial_embedding if argp.optimization != "genetic" else None,
+                              **kwargs)
 
         # skip zip attachment as it simply grows too big
         # create zip archive of results

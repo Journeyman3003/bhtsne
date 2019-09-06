@@ -237,7 +237,7 @@ def get_axlims(series, marginfactor):
 def load_result_and_plot_single(_input_data, _labels, path_to_bh_tsne_result, mode=0, legend=None, rearrange_legend=False):
 
     # assuming only a single result file
-    files = glob.glob(os.path.join(path_to_bh_tsne_result, "**/*.pickle"))
+    files = glob.glob(os.path.join(path_to_bh_tsne_result, "**/*.pickle"), recursive=True)
 
     # for fashion_mnist= adjust labels
     fashion_labels = [FASHION_LABELDICT[l] for l in _labels]
@@ -296,7 +296,7 @@ def load_result_and_plot_single(_input_data, _labels, path_to_bh_tsne_result, mo
 
 if __name__ == "__main__":
 
-    data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
+    data, labels = mnist.load_fashion_mnist_data(False, len_sample=100)
     #data, labels = mnist.load_fashion_mnist_data(True)
 
     #load_result_and_plot_comparison(_labels=labels, root_dir=os.path.join(RESULT_DIR, "tSNE", "parametertuning",
@@ -304,7 +304,7 @@ if __name__ == "__main__":
     #                                plot_title_from_filepath_index=-6, data_identifier="fashion_mnist")
 
     load_result_and_plot_single(data, labels,
-                                "C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\perplexity\\2\\fashion_mnist7000",
+                                "C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\optimization\\genetic\\iterations\\1000",
                                 mode=1, legend=None, rearrange_legend=False)
 
     # basepath1 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\unoptimized sptree\\1"
