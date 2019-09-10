@@ -27,6 +27,8 @@ MNIST = "mnist"
 FASHION_MNIST = "fashion_mnist"
 FASHION_MNIST10 = "fashion_mnist10"
 FASHION_MNIST100 = "fashion_mnist100"
+FASHION_MNIST200 = "fashion_mnist200"
+FASHION_MNIST500 = "fashion_mnist500"
 FASHION_MNIST1000 = "fashion_mnist1000"
 FASHION_MNIST2500 = "fashion_mnist2500"
 FASHION_MNIST5000 = "fashion_mnist5000"
@@ -35,7 +37,7 @@ FASHION_MNIST10000 = "fashion_mnist10000"
 FASHION_MNIST20000 = "fashion_mnist20000"
 
 
-DATA_SETS = [MNIST_TEST, MNIST, FASHION_MNIST, FASHION_MNIST10, FASHION_MNIST100, FASHION_MNIST1000, FASHION_MNIST2500,
+DATA_SETS = [MNIST_TEST, MNIST, FASHION_MNIST, FASHION_MNIST10, FASHION_MNIST100, FASHION_MNIST200, FASHION_MNIST500, FASHION_MNIST1000, FASHION_MNIST2500,
              FASHION_MNIST5000, FASHION_MNIST7000, FASHION_MNIST10000, FASHION_MNIST20000]
 
 # Runtime testing
@@ -174,6 +176,10 @@ def load_data(data_identifier):
         return mnist.load_fashion_mnist_data(all_data=False, len_sample=10)
     elif data_identifier == FASHION_MNIST100:
         return mnist.load_fashion_mnist_data(all_data=False, len_sample=100)
+    elif data_identifier == FASHION_MNIST200:
+        return mnist.load_fashion_mnist_data(all_data=False, len_sample=200)
+    elif data_identifier == FASHION_MNIST500:
+        return mnist.load_fashion_mnist_data(all_data=False, len_sample=500)
     elif data_identifier == FASHION_MNIST1000:
         return mnist.load_fashion_mnist_data(all_data=False, len_sample=1000)
     elif data_identifier == FASHION_MNIST2500:

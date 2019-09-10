@@ -44,7 +44,7 @@
 
 using namespace std;
 
-const unsigned int POP_SIZE = 100;
+//const unsigned int POP_SIZE = 100;
 
 static double sign(double x) { return (x == .0 ? .0 : (x < .0 ? -1.0 : 1.0)); }
 
@@ -242,7 +242,7 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 	//always randomly init Y for genetic optimizer
 	if (optimization == 1) {
 		printf("Initializing Y (Chromosomes) at random!\n");
-		for (int i = 0; i < N * no_dims * POP_SIZE; i++) Y[i] = randn() * .0001;
+		for (int i = 0; i < N * no_dims * N; i++) Y[i] = randn() * .0001;
 	}
 	// Initialize solution (randomly)
 	else {
@@ -2571,13 +2571,13 @@ void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, in
 void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double costFunc(double*, double*, int, int, double*))
 {
 	// offspring will contain parents as well
-	double* offspring = (double*)malloc(2 * N * POP_SIZE * D * sizeof(double));
+	double* offspring = (double*)malloc(2 * N * N * D * sizeof(double));
 	if (offspring == NULL) { printf("Memory allocation failed!\n"); exit(1); }
 	std::vector<double> fitness_vector;
 	std::vector<double> fitness_inverted;
 
 	//copy parents to offspring malloc
-	for (int i = 0; i < N * D * POP_SIZE; i++) {
+	for (int i = 0; i < N * D * N; i++) {
 		offspring[i] = Y[i];
 	}
 
@@ -2610,7 +2610,7 @@ void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double 
 	double y_range = y_max - y_min;
 
 	// compute fitness of individuals 
-	for (int i = 0; i < POP_SIZE; i++) {
+	for (int i = 0; i < N; i++) {
 		// set costs to 0
 		for (int j = 0; j < N; j++) costs[j] = 0.0;
 		fitness = costFunc(P, Y + (i * D * N), N, D, costs);
@@ -2624,7 +2624,7 @@ void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double 
 	}
 
 	// create offspring
-	for (int o = 0; o < POP_SIZE; o++) {
+	for (int o = 0; o < N; o++) {
 		// roulette wheel selection of parents
 		unsigned int parent_one = 0;
 		unsigned int parent_two = 0;
@@ -2633,7 +2633,7 @@ void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double 
 		double offset = 0.0;
 
 		// parent 1
-		for (int i = 0; i < POP_SIZE; i++) {
+		for (int i = 0; i < N; i++) {
 			offset += 1 / fitness_vector[i] / total_inverted_fitness;
 			if (rndNumber < offset) {
 				parent_one = i;
@@ -2647,7 +2647,7 @@ void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double 
 			offset = 0.0;
 
 			// parent 2
-			for (int i = 0; i < POP_SIZE; i++) {
+			for (int i = 0; i < N; i++) {
 				offset += 1 / fitness_vector[i] / total_inverted_fitness;
 				if (rndNumber < offset) {
 					parent_two = i;
@@ -2659,9 +2659,9 @@ void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double 
 		// average crossover
 		/*
 		for (int i = 0; i < D * N; i++) {
-			offspring[POP_SIZE * D * N + o * D * N + i] = offspring[parent_one * D * N + i];
-			offspring[POP_SIZE * D * N + o * D * N + i] += offspring[parent_two * D * N + i];
-			offspring[POP_SIZE * D * N + o * D * N + i] /= 2;
+			offspring[N * D * N + o * D * N + i] = offspring[parent_one * D * N + i];
+			offspring[N * D * N + o * D * N + i] += offspring[parent_two * D * N + i];
+			offspring[N * D * N + o * D * N + i] /= 2;
 		}
 		*/
 		
@@ -2669,10 +2669,10 @@ void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double 
 		for (int i = 0; i < D * N; i++) {
 			rndNumber = rand() / (double)RAND_MAX;
 			if (rndNumber > .5) {
-				offspring[POP_SIZE * D * N + o * D * N + i] = offspring[parent_one * D * N + i];
+				offspring[N * D * N + o * D * N + i] = offspring[parent_one * D * N + i];
 			}
 			else {
-				offspring[POP_SIZE * D * N + o * D * N + i] = offspring[parent_two * D * N + i];
+				offspring[N * D * N + o * D * N + i] = offspring[parent_two * D * N + i];
 			}
 		}
 
@@ -2683,29 +2683,29 @@ void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double 
 			if (rndNumber < .05) {
 				for (int d = 0; d < D; d++) {
 					if (d == 0) {
-						offspring[POP_SIZE * D * N + o * D * N + i] =
-							//min(max(randn(offspring[POP_SIZE * D * N + o * D * N + i], x_range / 10), x_min), x_max);
-							randn(offspring[POP_SIZE * D * N + o * D * N + i], x_range / 10);
+						offspring[N * D * N + o * D * N + i] =
+							//min(max(randn(offspring[N * D * N + o * D * N + i], x_range / 10), x_min), x_max);
+							randn(offspring[N * D * N + o * D * N + i], x_range / 10);
 					}
 					else {
-						offspring[POP_SIZE * D * N + o * D * N + i] =
-							//min(max(randn(offspring[POP_SIZE * D * N + o * D * N + i], y_range / 10), y_min), y_max);
-							randn(offspring[POP_SIZE * D * N + o * D * N + i], y_range / 10);
+						offspring[N * D * N + o * D * N + i] =
+							//min(max(randn(offspring[N * D * N + o * D * N + i], y_range / 10), y_min), y_max);
+							randn(offspring[N * D * N + o * D * N + i], y_range / 10);
 					}
 				}
 			}
 		}
 	}
 	// compute fitness of newly generated offspring
-	for (int i = 0; i < POP_SIZE; i++) {
+	for (int i = 0; i < N; i++) {
 		// set costs to 0
 		for (int j = 0; j < N; j++) costs[j] = 0.0;
-		fitness = costFunc(P, offspring + (POP_SIZE * D * N + i * D * N), N, D, costs);
+		fitness = costFunc(P, offspring + (N * D * N + i * D * N), N, D, costs);
 		fitness_vector.push_back(fitness);
 	}
 
 	// order fitness to find best offspring
-	vector<pair<double, int>> fitness_ordered = sortArr(fitness_vector, 2 * POP_SIZE);
+	vector<pair<double, int>> fitness_ordered = sortArr(fitness_vector, 2 * N);
 
 	// debug
 	//for (int p = 0; p < fitness_ordered.size(); p++) {
@@ -2714,7 +2714,7 @@ void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double 
 
 	// recover best survivors to Y
 
-	for (int i = 0; i < POP_SIZE; i++) {
+	for (int i = 0; i < N; i++) {
 		int offspring_index = fitness_ordered[i].second;
 
 		for (int nd = 0; nd < N * D; nd++) {
@@ -2731,13 +2731,13 @@ void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, 
 	double costFunc(unsigned int*, unsigned int*, double*, double*, int, int, double, double*))
 {
 	// offspring will contain parents as well
-	double* offspring = (double*)malloc(2 * N * POP_SIZE * D * sizeof(double));
+	double* offspring = (double*)malloc(2 * N * N * D * sizeof(double));
 	if (offspring == NULL) { printf("Memory allocation failed!\n"); exit(1); }
 	std::vector<double> fitness_vector;
 	std::vector<double> fitness_inverted;
 
 	//copy parents to offspring malloc
-	for (int i = 0; i < N * D * POP_SIZE; i++) {
+	for (int i = 0; i < N * D * N; i++) {
 		offspring[i] = Y[i];
 	}
 
@@ -2770,7 +2770,7 @@ void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, 
 	double y_range = y_max - y_min;
 
 	// compute fitness of individuals 
-	for (int i = 0; i < POP_SIZE; i++) {
+	for (int i = 0; i < N; i++) {
 		// set costs to 0
 		for (int j = 0; j < N; j++) costs[j] = 0.0;
 		fitness = costFunc(row_P, col_P, val_P, Y + (i * D * N), N, D, theta, costs);
@@ -2784,7 +2784,7 @@ void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, 
 	}
 
 	// create offspring
-	for (int o = 0; o < POP_SIZE; o++) {
+	for (int o = 0; o < N; o++) {
 		// roulette wheel selection of parents
 		unsigned int parent_one = 0;
 		unsigned int parent_two = 0;
@@ -2793,7 +2793,7 @@ void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, 
 		double offset = 0.0;
 
 		// parent 1
-		for (int i = 0; i < POP_SIZE; i++) {
+		for (int i = 0; i < N; i++) {
 			offset += 1 / fitness_vector[i] / total_inverted_fitness;
 			if (rndNumber < offset) {
 				parent_one = i;
@@ -2807,7 +2807,7 @@ void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, 
 			offset = 0.0;
 
 			// parent 2
-			for (int i = 0; i < POP_SIZE; i++) {
+			for (int i = 0; i < N; i++) {
 				offset += 1 / fitness_vector[i] / total_inverted_fitness;
 				if (rndNumber < offset) {
 					parent_two = i;
@@ -2819,9 +2819,9 @@ void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, 
 		// average crossover
 		/*
 		for (int i = 0; i < D * N; i++) {
-			offspring[POP_SIZE * D * N + o * D * N + i] = offspring[parent_one * D * N + i];
-			offspring[POP_SIZE * D * N + o * D * N + i] += offspring[parent_two * D * N + i];
-			offspring[POP_SIZE * D * N + o * D * N + i] /= 2;
+			offspring[N * D * N + o * D * N + i] = offspring[parent_one * D * N + i];
+			offspring[N * D * N + o * D * N + i] += offspring[parent_two * D * N + i];
+			offspring[N * D * N + o * D * N + i] /= 2;
 		}
 		*/
 
@@ -2829,10 +2829,10 @@ void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, 
 		for (int i = 0; i < D * N; i++) {
 			rndNumber = rand() / (double)RAND_MAX;
 			if (rndNumber > .5) {
-				offspring[POP_SIZE * D * N + o * D * N + i] = offspring[parent_one * D * N + i];
+				offspring[N * D * N + o * D * N + i] = offspring[parent_one * D * N + i];
 			}
 			else {
-				offspring[POP_SIZE * D * N + o * D * N + i] = offspring[parent_two * D * N + i];
+				offspring[N * D * N + o * D * N + i] = offspring[parent_two * D * N + i];
 			}
 		}
 
@@ -2843,30 +2843,30 @@ void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, 
 			if (rndNumber < .05) {
 				for (int d = 0; d < D; d++) {
 					if (d == 0) {
-						offspring[POP_SIZE * D * N + o * D * N + i] =
-							//min(max(randn(offspring[POP_SIZE * D * N + o * D * N + i], x_range / 10), x_min), x_max);
-							randn(offspring[POP_SIZE * D * N + o * D * N + i], x_range / 10);
+						offspring[N * D * N + o * D * N + i] =
+							//min(max(randn(offspring[N * D * N + o * D * N + i], x_range / 10), x_min), x_max);
+							randn(offspring[N * D * N + o * D * N + i], x_range / 10);
 					}
 					else {
-						offspring[POP_SIZE * D * N + o * D * N + i] =
-							//min(max(randn(offspring[POP_SIZE * D * N + o * D * N + i], y_range / 10), y_min), y_max);
-							randn(offspring[POP_SIZE * D * N + o * D * N + i], y_range / 10);
+						offspring[N * D * N + o * D * N + i] =
+							//min(max(randn(offspring[N * D * N + o * D * N + i], y_range / 10), y_min), y_max);
+							randn(offspring[N * D * N + o * D * N + i], y_range / 10);
 					}
 				}
 			}
 		}
 	}
 	// compute fitness of newly generated offspring
-	for (int i = 0; i < POP_SIZE; i++) {
+	for (int i = 0; i < N; i++) {
 		// set costs to 0
 		for (int j = 0; j < N; j++) costs[j] = 0.0;
 		
-		fitness = costFunc(row_P, col_P, val_P, offspring + (POP_SIZE * D * N + i * D * N), N, D, theta, costs);
+		fitness = costFunc(row_P, col_P, val_P, offspring + (N * D * N + i * D * N), N, D, theta, costs);
 		fitness_vector.push_back(fitness);
 	}
 
 	// order fitness to find best offspring
-	vector<pair<double, int>> fitness_ordered = sortArr(fitness_vector, 2 * POP_SIZE);
+	vector<pair<double, int>> fitness_ordered = sortArr(fitness_vector, 2 * N);
 
 	// debug
 	//for (int p = 0; p < fitness_ordered.size(); p++) {
@@ -2875,7 +2875,7 @@ void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, 
 
 	// recover best survivors to Y
 
-	for (int i = 0; i < POP_SIZE; i++) {
+	for (int i = 0; i < N; i++) {
 		int offspring_index = fitness_ordered[i].second;
 
 		for (int nd = 0; nd < N * D; nd++) {
@@ -3098,7 +3098,7 @@ bool TSNE::load_data(double** data, int* n, int* d, double** initial_solution, i
 	
 	// create initial solution malloc according to whether genetic optimizer is used or not
 	if (*optimization == 1) {
-		*initial_solution = (double*)malloc(*n * *no_dims * POP_SIZE * sizeof(double));
+		*initial_solution = (double*)malloc(*n * *no_dims * *n * sizeof(double));
 	}
 	else {
 		*initial_solution = (double*)malloc(*n * *no_dims  * sizeof(double));

@@ -234,10 +234,21 @@ def get_axlims(series, marginfactor):
 #    ax.update_datalim(coords)
 #    ax.autoscale()
 
-def load_result_and_plot_single(_input_data, _labels, path_to_bh_tsne_result, mode=0, legend=None, rearrange_legend=False):
+def load_result_and_plot_single(_input_data, _labels, path_to_bh_tsne_result, data_filter="fashion_mnist7000",
+                                mode=0, legend=None, rearrange_legend=False, max_iter_only=False):
 
     # assuming only a single result file
     files = glob.glob(os.path.join(path_to_bh_tsne_result, "**/*.pickle"), recursive=True)
+
+    files = list(filter(lambda x: data_filter in str(x).split(os.path.sep)
+                        and
+                        ("exaggeration" in str(x).split(os.path.sep)
+                         or
+                         "iterations" in str(x).split(os.path.sep)), files))
+
+
+    # for now, focus on run 1
+    files = list(filter(lambda x: str(1) == str(x).split(os.path.sep)[-2], files))
 
     # for fashion_mnist= adjust labels
     fashion_labels = [FASHION_LABELDICT[l] for l in _labels]
@@ -245,50 +256,51 @@ def load_result_and_plot_single(_input_data, _labels, path_to_bh_tsne_result, mo
     for file in files:
         embedding_dict = bhtsne.read_bh_tsne_result(file)
         for key in embedding_dict.keys():
-            data = embedding_dict[key]
+            if not max_iter_only or key[0] == 1000 or key[0] == 0:
+                data = embedding_dict[key]
 
-            dirname = os.path.dirname(file)
-            dirname = dirname.replace("results", "plots\\single")
-            try:
-                os.makedirs(dirname)
-            except FileExistsError:
-                # directory already exists
-                pass
+                dirname = os.path.dirname(file)
+                dirname = dirname.replace("results", "plots\\single")
+                try:
+                    os.makedirs(dirname)
+                except FileExistsError:
+                    # directory already exists
+                    pass
 
-            if mode == 0 or mode == 1:
-                fig, ax = plt.subplots(figsize=(8, 8))
+                if mode == 0 or mode == 1:
+                    fig, ax = plt.subplots(figsize=(8, 8))
 
-                plot_bh_tsne_result(_data=data, _labels=fashion_labels, _legend="full" if key[0] == 1000 else legend,
-                                    rearrange_legend=rearrange_legend, _palette="bright", _ax=ax, axes_off=True)
-                filename = os.path.splitext(file)[0] + "-iteration{}".format(str(key[0]))
-                filename = filename.replace("results", "plots\\single")
+                    plot_bh_tsne_result(_data=data, _labels=fashion_labels, _legend="full" if key[0] == 10 else legend,
+                                        rearrange_legend=rearrange_legend, _palette="bright", _ax=ax, axes_off=True)
+                    filename = os.path.splitext(file)[0] + "-iteration{}".format(str(key[0]))
+                    filename = filename.replace("results", "plots\\single")
 
-                plt.savefig(filename, bbox_inches="tight")
+                    plt.savefig(filename, bbox_inches="tight")
 
-                plt.close()
+                    plt.close()
 
-            if mode == 0 or mode == 2:
-                fig, ax = plt.subplots(figsize=(8, 8))
-                # just a sample of 300 as images
-                _sample_input_data, _sample_labels = mnist.sample_data(_input_data, _labels, num_samples=300)
-                _sample_embedding_data, _ = mnist.sample_data(data, _labels, num_samples=300)
-                color_palette = sns.color_palette("bright", n_colors=10)
-                _sample_labels = _sample_labels.astype(int)
+                if mode == 0 or mode == 2:
+                    fig, ax = plt.subplots(figsize=(8, 8))
+                    # just a sample of 300 as images
+                    _sample_input_data, _sample_labels = mnist.sample_data(_input_data, _labels, num_samples=300)
+                    _sample_embedding_data, _ = mnist.sample_data(data, _labels, num_samples=300)
+                    color_palette = sns.color_palette("bright", n_colors=10)
+                    _sample_labels = _sample_labels.astype(int)
 
-                for image, (x, y), label in zip(_sample_input_data, _sample_embedding_data[:, 0:2], _sample_labels):
-                    im = OffsetImage(image.reshape(28, 28), zoom=1, cmap='gray')
-                    ab = AnnotationBbox(im, (x, y), xycoords='data', frameon=True, pad=.0,
-                                        bboxprops=dict(edgecolor=color_palette[label], facecolor=color_palette[label]))
-                    ax.add_artist(ab)
-                ax.update_datalim(data[:, 0:2])
-                ax.autoscale()
-                ax.axis('off')
+                    for image, (x, y), label in zip(_sample_input_data, _sample_embedding_data[:, 0:2], _sample_labels):
+                        im = OffsetImage(image.reshape(28, 28), zoom=1, cmap='gray')
+                        ab = AnnotationBbox(im, (x, y), xycoords='data', frameon=True, pad=.0,
+                                            bboxprops=dict(edgecolor=color_palette[label], facecolor=color_palette[label]))
+                        ax.add_artist(ab)
+                    ax.update_datalim(data[:, 0:2])
+                    ax.autoscale()
+                    ax.axis('off')
 
-                filename = os.path.splitext(file)[0] + "-iteration{}-images".format(str(key[0]))
-                filename = filename.replace("results", "plots\\single")
-                plt.savefig(filename, bbox_inches="tight")
+                    filename = os.path.splitext(file)[0] + "-iteration{}-images".format(str(key[0]))
+                    filename = filename.replace("results", "plots\\single")
+                    plt.savefig(filename, bbox_inches="tight")
 
-                plt.close()
+                    plt.close()
 
 
 
@@ -296,16 +308,24 @@ def load_result_and_plot_single(_input_data, _labels, path_to_bh_tsne_result, mo
 
 if __name__ == "__main__":
 
-    data, labels = mnist.load_fashion_mnist_data(False, len_sample=100)
+    #data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
     #data, labels = mnist.load_fashion_mnist_data(True)
 
     #load_result_and_plot_comparison(_labels=labels, root_dir=os.path.join(RESULT_DIR, "tSNE", "parametertuning",
     #                                                                      "output_similarities", "studentalpha"),
     #                                plot_title_from_filepath_index=-6, data_identifier="fashion_mnist")
 
+    #load_result_and_plot_single(data, labels,
+    #                            "C:\\Users\\Tobi\\git\\bhtsne\\results\\BHtSNE\\buildingblocks\\initial_embeddings",
+    #                            data_filter="fashion_mnist",
+    #                            mode=1, legend=None, rearrange_legend=True, max_iter_only=True)
+
+    data, labels = mnist.load_fashion_mnist_data(False, len_sample=500)
+
     load_result_and_plot_single(data, labels,
-                                "C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\optimization\\genetic\\iterations\\1000",
-                                mode=1, legend=None, rearrange_legend=False)
+                                "C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\optimization",
+                                data_filter="fashion_mnist500",
+                                mode=1, legend=None, rearrange_legend=False, max_iter_only=False)
 
     # basepath1 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\unoptimized sptree\\1"
     # basepath2 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\optimized sptree\\1"

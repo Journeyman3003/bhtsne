@@ -9,8 +9,10 @@ from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import matplotlib as mpl
+import matplotlib.ticker as ticker
 import seaborn as sns
 from matplotlib.ticker import FormatStrFormatter
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 import matplotlib.lines as mlines
 import json
 
@@ -340,37 +342,53 @@ def plot_fashion_mnist():
         plt.show()
 
 
-def metric_plot(metric_json, plot_title):
+def metric_plot(*metric_json_list, stoplying_iter=[], restartlying_iter=[], legend_labels=[], plot_title="metric_dict"):
     sns.set(style="whitegrid")
-    fig, ax = plt.subplots(figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=(16, 4))
 
     ax2 = ax.twinx()
+    ax2.set_zorder(15)
+    ax2.grid(False)
 
-    for metric in metric_json.keys():
-        if metric != "1NNgeneralization_error":
-            x = np.array(list(metric_json[metric].keys()))
-            x = x.astype(int)
-            y = np.array(list(metric_json[metric].values()))
+    linestyles = ['solid', 'dashed', 'dotted']
 
-            # correct error values
-            if metric == "cost_function_value":
-                for i, x_val in enumerate(x):
-                    if int(x_val) < 250:
-                        y[i] = y[i]/12 - np.log(12)
+    for metric_json, stoplying, restartlying, label, linestyle in zip(metric_json_list, stoplying_iter, restartlying_iter, legend_labels, linestyles[:len(metric_json_list)]):
+        for metric in metric_json.keys():
+            if metric != "1NNgeneralization_error":
+                x = np.array(list(metric_json[metric].keys()))
+                x = x.astype(int)
+                y = np.array(list(metric_json[metric].values()))
 
-                ax.plot(x, y, linestyle="-", color=blue, linewidth=1.5,
-                        label="KL-cost")
-                ax.set_ylabel('KL-cost', color=blue, fontsize=15)
-            else:
-                ax2.plot(x, y, linestyle="-", color=orange, linewidth=1.5)
-                ax2.set_ylabel('Trustworthiness T(12)', color=orange, fontsize=15)
-            #if metric == "cost_function_value":
-            #    plt.plot(x, np.repeat(1.17, len(x)), linestyle="--", color=blue, linewidth=1.5,
-            #             label="Approximate local optimum")
+                # correct error values
+                if metric == "cost_function_value":
+                    for i, x_val in enumerate(x):
+                        if int(x_val) < stoplying or int(x_val) >= restartlying:
+                            y[i] = y[i]/12 - np.log(12)
+
+                    ax.plot(x, y, linestyle=linestyle, color=blue, linewidth=1.5,
+                            label="/", zorder=100)
+
+                    #ax.annotate('Plateau indicates infinitesimal improvement\nin global organization (iteration 250)',
+                    #            xy=(x[6], y[6]), fontsize=15, backgroundcolor="w", alpha=.9,
+                    #            xytext=(x[9]+7, 3.7), arrowprops={'facecolor': 'black', 'shrink': 0.1, 'alpha':.6})
+
+                    ax.set_ylabel('KL-cost', color=blue, fontsize=15)
+                else:
+                    ax2.plot(x, y, linestyle=linestyle, color=orange, linewidth=1.5,
+                             #label="Restart exaggerating at iteration {}".format(str(restartlying)) if restartlying <= 1000 else "No exaggeration restart", zorder=100)
+                             label=label, zorder=100)
+                    ax2.set_ylabel('Trustworthiness T(12)', color=orange, fontsize=15)
+                #if metric == "cost_function_value":
+                #    plt.plot(x, np.repeat(1.17, len(x)), linestyle="--", color=blue, linewidth=1.5,
+                #             label="Approximate local optimum")
     ax.set_xlabel('Iteration', fontsize=15)
 
-    ax.set(xlim=(0, 1000), ylim=(0, 5))
-    ax2.set(ylim=(0.5, 1))
+    x_pad = 1000 * 0.05
+    y_pad1 = 5 * 0.05
+    y_pad2 = 0.5 * 0.05
+
+    ax.set(xlim=(0-x_pad, 1000+x_pad), ylim=(0-y_pad1, 5+y_pad1))
+    ax2.set(ylim=(0.5-y_pad2, 1+y_pad2))
 
     ax.tick_params(
         axis='y',  # changes apply to the x-axis
@@ -392,15 +410,252 @@ def metric_plot(metric_json, plot_title):
         labelsize=12,
         labelcolor=orange)
 
-    #sns.despine(left=False, right=True, bottom=False, top=True)
-    #plt.legend(loc='upper right', fontsize=15)
+    sns.despine(left=True, right=True, bottom=True, top=True)
+
+    handlesL, labelsL = ax.get_legend_handles_labels()
+    handlesR, labelsR = ax2.get_legend_handles_labels()
+    handles = handlesL + handlesR
+    labels = labelsL + labelsR
+    plt.legend(handles, labels, loc='upper right', bbox_to_anchor=[.9, .9], ncol=2, fontsize=15,
+               handletextpad=0.4, columnspacing=0.4)
+
     plt.savefig(plot_title, bbox_inches="tight")
     plt.show()
 
 
+def plot_perplexity_trustworthiness():
+    sns.set(style="whitegrid")
+    fig, ax = plt.subplots(figsize=(16, 4))
+
+    perplexity_x = np.array([2,5,10,20,30,40,50,100,200,500,1000,2333])
+    perplexity_y = np.array([0.9295, 0.9688, 0.9760, 0.9799, 0.9808, 0.9811, 0.9895, 0.9881, 0.9821,0.9798 ,0.9764 ,0.9673])
+
+    ax.plot(perplexity_x, perplexity_y, linestyle="-", color=orange, linewidth=1.5)
+
+    ax.set_xlabel('Perplexity', fontsize=15)
+    ax.set_ylabel('Trustworthiness T(12)', color=orange, fontsize=15)
+
+    ax.tick_params(
+        axis='x',  # changes apply to the x-axis
+        labelsize=12)
+
+    ax.tick_params(
+        axis='y',  # changes apply to the x-axis
+        which='both',  # both major and minor ticks are affected
+        labelsize=12,
+        labelcolor=orange)
+
+    #ax.set(xlim=(0, 2333), ylim=(0.925, 0.99))
+
+    ax.annotate('Maximum Trustworthiness\nat perplexity = 50', xy=(perplexity_x[6],perplexity_y[6]),
+                alpha=.9, backgroundcolor='w',
+                xytext=(perplexity_x[8]+10, 0.956), arrowprops={'facecolor':'black', 'shrink':0.1, 'alpha':.6}, fontsize=15)
+    sns.despine(left=True, right=True, bottom=True, top=True)
+    plt.savefig("perplexity_trustworthiness", bbox_inches="tight")
+    plt.show()
+
+
+def plot_perplexity_time():
+
+    x = np.array([2,5,10,20,30,40,50,100,200,500,1000,5000])
+    y_tree = [76.36, 94.20, 107.90, 132.41, 160.06, 167.18, 189.13, 274.35, 315.30, 858.99, 2081.80, 32856.28]
+    y_fit = [521.09, 527.09, 545.90, 589.03, 672.80, 703.97, 761.61, 958.56, 1062.05, 1895.86, 3235.10, 11936.49]
+
+    y_total = [sum(x) for x in zip(y_tree, y_fit)]
+
+    sns.set(style="whitegrid")
+    fig, ax = plt.subplots(figsize=(16, 4))
+
+    ax.plot(x, y_total, linestyle="-", color='black', linewidth=1.5, label="Total time")
+
+    tree = plt.fill_between(x, y_total, y_tree, alpha=0.4, color=blue)
+    fit = plt.fill_between(x, y_tree, 0, alpha=0.4, color=orange)
+
+    handles, labels = ax.get_legend_handles_labels()
+
+    handles.extend((tree, fit))
+    labels.extend(("Fitting time", "Input similarity approximation time"))
+
+    ax.legend(handles=handles, labels=labels, loc='upper left',
+              fontsize=15)
+
+    #plt.yscale('log')
+
+    ax.tick_params(
+        axis='both',  # changes apply to the x-axis
+        labelsize=12)
+
+    ax.set_xlabel('Perplexity', fontsize=15)
+    ax.set_ylabel('Time in seconds', fontsize=15)
+
+    sns.despine(left=True, right=True, bottom=True, top=True)
+    plt.savefig("perplexity_time", bbox_inches="tight")
+    plt.show()
+
+
+def plot_theta_run_time():
+
+    num_samples = [500, 1000, 2500, 5000, 7500, 10000, 20000, 30000, 40000, 50000, 60000, 70000]
+    theta_val = np.round(np.linspace(0,1,11),1)
+    num_samples_exact = [200, 500, 1000, 2500, 5000, 7500, 10000, 20000]
+
+    theta = np.array([  [ 3.8, 18.91, 136.18, 581.74, 1421.88, 2601.82, 10409.27, np.NaN, np.NaN, np.NaN, np.NaN , np.NaN],
+                        [ 3.79, 9.94, 33.83, 90.63, 162.7, 239.57, 668.85, 1416.34, 2115.96, 2790.85, 3726.12, 4467.96],
+                        [ 2.64, 5.76, 17.72, 43.68, 73.67, 107.16, 262.31, 457.36, 680.26, 935.22, 1205.91, 1510.96],
+                        [ 1.99, 4.49, 12.92, 30.31, 53.89, 71.38, 169.19, 290.82, 432.21, 536.36, 727.62, 826.76],
+                        [ 1.72, 3.81, 10.42, 23.95, 41.61, 56.46, 132.08, 218.09, 308.32, 413.97, 519.27, 598.7],
+                        [ 1.56, 3.35, 9.25, 20.98, 34.32, 48.13, 112.23, 181.06, 270.19, 359.66, 493.43, 553.2],
+                        [ 1.51, 3.05, 8.43, 19.89, 30.79, 44.58, 105.06, 167.62, 223.79, 293.17, 359.89, 433.65],
+                        [ 1.35, 2.9, 8, 17.66, 29.23, 41.48, 95.17, 146.32, 204.74, 260.65, 338.86, 391.34],
+                        [ 1.31, 2.65, 7.27, 17.02, 28.13, 36.68, 91.23, 138.04, 190.88, 243.85, 318.89, 351.19],
+                        [ 1.28, 2.61, 7.01, 15.41, 24.81, 34.73, 81.37, 124.7, 168.31, 212.97, 265.08, 316.06],
+                        [ 1.19, 2.54, 6.67, 14.26, 23.55, 30.79, 71.54, 114.15, 150.89, 190.96, 240.32, 283.32]])
+
+    theta_log = np.round(np.log10(theta),2)
+
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+
+    sns.set_style("whitegrid")
+    ax = sns.heatmap(theta_log, annot=True, linewidths=.5, vmin=0, vmax=4, xticklabels=num_samples, yticklabels=theta_val,
+                     cbar_kws=dict(ticks=[0, 1, 2, 3, 4], shrink=.77), square=True)
+    cbar = ax.collections[0].colorbar
+    # here set the labelsize by 20
+    cbar.ax.tick_params(labelsize=12)
+    cbar.ax.set_ylabel(r'$\log_{10}$ Time in seconds', fontsize=15)
+
+    plt.xticks(rotation='vertical', fontsize=12)
+    plt.yticks(rotation='horizontal', fontsize=12)
+    plt.tick_params(axis='both', which='both', length=0)
+    plt.ylabel(r"Gradient accuracy $\theta$", fontsize=15)
+    plt.xlabel("Number of samples in database", fontsize=15)
+    #ax.set_aspect("equal")
+
+    plt.savefig("theta_numsample_time", bbox_inches="tight")
+    plt.show()
+
+def plot_theta_1nn_tradeoff():
+
+    x = np.round(np.linspace(0.1,1,10),1)
+
+    y_acc = np.array([0.7802,0.7797,0.7791,0.7781,0.7743,0.7731,0.7606,0.7573,0.7447,0.7294])
+
+    y_nn = 1-y_acc
+    sns.set_style("whitegrid")
+    fig, ax = plt.subplots(figsize=(16, 4))
+
+    y_range = y_nn[-1] - y_nn[0]
+    y_pad = y_range * 0.05
+
+    plt.plot(x, y_nn, linestyle="--", marker='o', color='black', linewidth=1.5)
+
+    for i, txt in enumerate(y_acc):
+        ax.annotate(txt, xy=(x[i], y_nn[i]), xytext=(x[i]-0.05, y_nn[i]+0.001), fontsize=12)
+
+    plt.ylabel("1-NN error", fontsize=15)
+    plt.xlabel(r"Gradient accuracy $\theta$", fontsize=15)
+
+    ax.set(xlim=(0, 1.05), ylim=(y_nn[0] - y_pad, y_nn[-1] + y_pad*2))
+
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(0.1))
+    ax.tick_params(
+        axis='both',  # changes apply to the x-axis
+        labelsize=12)
+
+    plt.savefig("theta_1nnerror", bbox_inches="tight")
+    plt.show()
+
+
+def plot_initialization_comparison():
+
+    x = np.round(np.linspace(0, 1000, 21), 0)
+    with open(
+            'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\initial_embeddings\\pca\\exaggeration\\1\\fashion_mnist7000\\1\\bh_tsne_result-18-08-2019_06-25-33-metrics.json','r') as f:
+        metric_json = json.load(f)
+
+    y_pca = np.delete(np.array(list(metric_json['cost_function_value'].values())), 1)
+
+    with open(
+            'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\initial_embeddings\\mds\\exaggeration\\1\\fashion_mnist7000\\1\\bh_tsne_result-18-08-2019_10-35-52-metrics.json','r') as f:
+        metric_json = json.load(f)
+
+    y_mds = np.delete(np.array(list(metric_json['cost_function_value'].values())), 1)
+
+    with open(
+            'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\initial_embeddings\\lle\\exaggeration\\1\\fashion_mnist7000\\1\\bh_tsne_result-18-08-2019_07-48-11-metrics.json','r') as f:
+        metric_json = json.load(f)
+
+    y_lle = np.delete(np.array(list(metric_json['cost_function_value'].values())), 1)
+
+    with open(
+            'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\initial_embeddings\\autoencoder\\exaggeration\\1\\fashion_mnist7000\\1\\bh_tsne_result-18-08-2019_09-10-53-metrics.json','r') as f:
+        metric_json = json.load(f)
+
+    y_auto = np.delete(np.array(list(metric_json['cost_function_value'].values())),1 )
+
+    sns.set_style("whitegrid")
+    fig, ax = plt.subplots(figsize=(16, 4))
+
+    plt.plot(x, y_pca, linestyle="-", linewidth=1.5, label="PCA")
+    plt.plot(x, y_mds, linestyle="-", linewidth=1.5, label="MDS")
+    plt.plot(x, y_lle, linestyle="-", linewidth=1.5, label="LLE")
+    plt.plot(x, y_auto, linestyle="-", linewidth=1.5, label="Autoencoder")
+
+    ax.tick_params(
+        axis='both',  # changes apply to the x-axis
+        labelsize=12)
+
+    plt.ylabel("KL-cost", fontsize=15)
+    plt.xlabel("Iteration", fontsize=15)
+
+    axins = inset_axes(ax, width="30%", height="30%", loc=10)
+    axins.plot(x, y_pca, linestyle="-", linewidth=1.5, label="PCA")
+    axins.plot(x, y_mds, linestyle="-", linewidth=1.5, label="MDS")
+    axins.plot(x, y_lle, linestyle="-", linewidth=1.5, label="LLE")
+    axins.plot(x, y_auto, linestyle="-", linewidth=1.5, label="Autoencoder")
+    axins.set_xlim([890, 1000.5])
+    axins.set_ylim([1.1801, 1.2099])
+    axins.xaxis.tick_top()
+    axins.tick_params(axis='x', which='both', length=0)
+    axins.xaxis.set_major_locator(ticker.MultipleLocator(50))
+    mark_inset(ax, axins, loc1=1, loc2=3, fc="2", ec="0.5")
+
+    # ax2 = plt.axes([0.4, 0.4, .35, .2], facecolor=None)
+    # ax2.plot(x, y_pca, linestyle="-", linewidth=1.5, label="PCA")
+    # ax2.plot(x, y_mds, linestyle="-", linewidth=1.5, label="MDS")
+    # ax2.plot(x, y_lle, linestyle="-", linewidth=1.5, label="LLE")
+    # ax2.plot(x, y_auto, linestyle="-", linewidth=1.5, label="Autoencoder")
+    # ax2.set_xlim([890, 1000])
+    # ax2.set_ylim([1.1801, 1.2099])
+    # ax2.xaxis.set_major_locator(ticker.MultipleLocator(50))
+
+    # ax3 = plt.axes([0.3, 0.4, .25, .2], facecolor=None)
+    # ax3.plot(x, y_pca, linestyle="-", linewidth=1.5, label="PCA")
+    # ax3.plot(x, y_mds, linestyle="-", linewidth=1.5, label="MDS")
+    # ax3.plot(x, y_lle, linestyle="-", linewidth=1.5, label="LLE")
+    # ax3.plot(x, y_auto, linestyle="-", linewidth=1.5, label="Autoencoder")
+    # ax3.set_xlim([100, 200])
+    # ax3.set_ylim([1.8295, 2.5649])
+    # ax3.xaxis.set_major_locator(ticker.MultipleLocator(50))
+
+
+    ax.legend(fontsize=15, ncol=4, handletextpad=0.4, columnspacing=0.4, loc="upper center")
+    sns.despine(left=True, right=True, bottom=True, top=True)
+
+    plt.savefig("initial_embeddings_cost", bbox_inches="tight")
+
+    plt.show()
+
 
 if __name__ == '__main__':
+
+    plot_initialization_comparison()
+    #plot_theta_1nn_tradeoff()
+    #plot_theta_run_time()
     #plot_gaussian_student_distance_shift(0, 6, 1, 1.5, 2, 2.5, alpha=4)
+
+    #plot_perplexity_trustworthiness()
+    #plot_perplexity_time()
 
     #plot_pca_new_directions()
     #plot_lda()
@@ -408,7 +663,102 @@ if __name__ == '__main__':
 
     #plot_fashion_mnist()
 
-    with open('C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\iterations\\1000\\fashion_mnist7000\\1\\bh_tsne_result-14-08-2019_09-23-14-metrics.json', 'r') as f:
-        metric_json = json.load(f)
 
-    metric_plot(metric_json, "KLT12tsnemaxiter")
+    # restartlying
+    #with open('C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\iterations\\1000\\fashion_mnist7000\\1\\bh_tsne_result-14-08-2019_09-23-14-metrics.json', 'r') as f:
+    #    metric_json = json.load(f)
+
+    #with open('C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\restartlying\\750\\fashion_mnist7000\\1\\bh_tsne_result-16-08-2019_10-17-22-metrics.json', 'r') as f:
+    #    metric_json2 = json.load(f)
+
+
+    # stoplying
+    #with open('C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\stoplying\\500\\fashion_mnist7000\\1\\bh_tsne_result-16-08-2019_05-14-42-metrics.json', 'r') as f:
+    #    metric_json2 = json.load(f)
+
+    #with open('C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\stoplying\\750\\fashion_mnist7000\\1\\bh_tsne_result-16-08-2019_06-54-48-metrics.json', 'r') as f:
+    #    metric_json3 = json.load(f)
+
+    #with open('C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\stoplying\\1000\\fashion_mnist7000\\1\\bh_tsne_result-16-08-2019_08-35-54-metrics.json', 'r') as f:
+    #    metric_json4 = json.load(f)
+
+    # learningrate
+    #with open('C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\learningrate\\50\\fashion_mnist7000\\1\\bh_tsne_result-15-08-2019_05-28-59-metrics.json', 'r') as f:
+    #     metric_json2 = json.load(f)
+
+    #with open('C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\iterations\\1000\\fashion_mnist7000\\1\\bh_tsne_result-14-08-2019_09-23-14-metrics.json', 'r') as f:
+    #     metric_json3 = json.load(f)
+
+    #with open('C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\learningrate\\1000\\fashion_mnist7000\\1\\bh_tsne_result-15-08-2019_10-35-11-metrics.json', 'r') as f:
+    #    metric_json4 = json.load(f)
+
+    #metric_plot(metric_json2, metric_json3, metric_json4, stoplying_iter=[250, 250, 250],
+    #            restartlying_iter=[1001, 1001, 1001],
+    #            legend_labels=["Learning rate: 50", "Learning rate: 200", "Learning rate: 1000"], plot_title="KLT12tsnelearningrate")
+
+    # momentum
+    # with open(
+    #         'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\momentum\\0.0\\fashion_mnist7000\\1\\bh_tsne_result-15-08-2019_12-17-32-metrics.json',
+    #         'r') as f:
+    #     metric_json2 = json.load(f)
+    #
+    # with open(
+    #         'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\iterations\\1000\\fashion_mnist7000\\1\\bh_tsne_result-14-08-2019_09-23-14-metrics.json',
+    #         'r') as f:
+    #     metric_json3 = json.load(f)
+    #
+    # with open(
+    #         'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\momentum\\0.8\\fashion_mnist7000\\1\\bh_tsne_result-15-08-2019_19-05-22-metrics.json',
+    #         'r') as f:
+    #     metric_json4 = json.load(f)
+    #
+    # metric_plot(metric_json4, metric_json3, metric_json2, stoplying_iter=[250, 250, 250],
+    #             restartlying_iter=[1001, 1001, 1001],
+    #             legend_labels=["Momentum: 0.0", "Momentum: 0.5", "Momentum: 0.8"],
+    #             plot_title="KLT12tsnemomentum")
+
+    # finalmomentum
+    # with open(
+    #         'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\finalmomentum\\0.0\\fashion_mnist7000\\1\\bh_tsne_result-15-08-2019_20-47-08-metrics.json',
+    #         'r') as f:
+    #     metric_json2 = json.load(f)
+    #
+    # with open(
+    #         'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\finalmomentum\\0.5\\fashion_mnist7000\\1\\bh_tsne_result-16-08-2019_01-52-16-metrics.json',
+    #         'r') as f:
+    #     metric_json3 = json.load(f)
+    #
+    # with open(
+    #         'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\iterations\\1000\\fashion_mnist7000\\1\\bh_tsne_result-14-08-2019_09-23-14-metrics.json',
+    #         'r') as f:
+    #     metric_json4 = json.load(f)
+    #
+    #
+    #
+    # metric_plot(metric_json2, metric_json3, metric_json4, stoplying_iter=[250, 250, 250],
+    #             restartlying_iter=[1001, 1001, 1001],
+    #             legend_labels=["Final momentum: 0.0", "Final momentum: 0.5", "Final momentum: 0.8"],
+    #             plot_title="KLT12tsnefinalmomentum")
+    #
+    # # momentumswitch
+    #
+    # with open(
+    #         'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\iterations\\1000\\fashion_mnist7000\\1\\bh_tsne_result-14-08-2019_09-23-14-metrics.json',
+    #         'r') as f:
+    #     metric_json2 = json.load(f)
+    #
+    # with open(
+    #         'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\momentumswitch\\500\\fashion_mnist7000\\1\\bh_tsne_result-16-08-2019_11-58-46-metrics.json',
+    #         'r') as f:
+    #     metric_json3 = json.load(f)
+    #
+    # with open(
+    #         'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\parametertuning\\momentumswitch\\750\\fashion_mnist7000\\1\\bh_tsne_result-16-08-2019_13-40-01-metrics.json',
+    #         'r') as f:
+    #     metric_json4 = json.load(f)
+    #
+    # metric_plot(metric_json2, metric_json3, metric_json4, stoplying_iter=[250, 250, 250],
+    #             restartlying_iter=[1001, 1001, 1001],
+    #             legend_labels=["Momentum switch iteration: 250", "Momentum switch iteration: 500", "Momentum switch iteration: 750"],
+    #             plot_title="KLT12tsnemomentumswitch")
+
