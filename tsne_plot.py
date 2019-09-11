@@ -309,23 +309,23 @@ def load_result_and_plot_single(_input_data, _labels, path_to_bh_tsne_result, da
 if __name__ == "__main__":
 
     #data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
-    #data, labels = mnist.load_fashion_mnist_data(True)
+    data, labels = mnist.load_fashion_mnist_data(True)
 
     #load_result_and_plot_comparison(_labels=labels, root_dir=os.path.join(RESULT_DIR, "tSNE", "parametertuning",
     #                                                                      "output_similarities", "studentalpha"),
     #                                plot_title_from_filepath_index=-6, data_identifier="fashion_mnist")
 
-    #load_result_and_plot_single(data, labels,
-    #                            "C:\\Users\\Tobi\\git\\bhtsne\\results\\BHtSNE\\buildingblocks\\initial_embeddings",
-    #                            data_filter="fashion_mnist",
-    #                            mode=1, legend=None, rearrange_legend=True, max_iter_only=True)
+    # load_result_and_plot_single(data, labels,
+    #                             "C:\\Users\\Tobi\\git\\bhtsne\\results\\BHtSNE\\buildingblocks\\initial_embeddings",
+    #                             data_filter="fashion_mnist",
+    #                             mode=1, legend=None, rearrange_legend=True, max_iter_only=True)
 
-    data, labels = mnist.load_fashion_mnist_data(False, len_sample=500)
+    #data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
 
     load_result_and_plot_single(data, labels,
-                                "C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\optimization",
-                                data_filter="fashion_mnist500",
-                                mode=1, legend=None, rearrange_legend=False, max_iter_only=False)
+                                "C:\\Users\\Tobi\\git\\bhtsne\\results\\BHtSNE\\buildingblocks\\output_similarities\\",
+                                data_filter="fashion_mnist",
+                                mode=1, legend=None, rearrange_legend=True, max_iter_only=True)
 
     # basepath1 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\unoptimized sptree\\1"
     # basepath2 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\optimized sptree\\1"

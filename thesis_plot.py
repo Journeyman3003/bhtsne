@@ -236,7 +236,7 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha
 
     plt.figure(figsize=(10, 5))
     plt.plot(x, alpha * stats.norm.pdf(x, mu, sigma), linestyle="-", color=blue, linewidth=1.5, label="Standard Gaussian distribution")
-    plt.plot(x, stats.t.pdf(x, 1), linestyle="-", color=orange, linewidth=1.5, label="Student-t (df = 1) distribution")
+    plt.plot(x, stats.t.pdf(x, 1), linestyle="-", color=orange, linewidth=1.5, label=r"Student-t ($\alpha$ = 1) distribution")
     plt.fill_between(x_1, alpha * stats.norm.pdf(x_1, mu, sigma), stats.t.pdf(x_1, 1), alpha=0.4, color=green)
     plt.fill_between(x_2, alpha * stats.norm.pdf(x_2, mu, sigma), stats.t.pdf(x_2, 1), alpha=0.4, color=red)
     for x_val in x_values:
@@ -247,9 +247,9 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha
             b, =plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1) + marker_adjustment,
                         alpha * stats.norm.pdf(x_val, mu, sigma), linestyle='',
                         marker='<', color=green, markersize=6, zorder=100)
-            highdim, = plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1), 0, linestyle='', markeredgewidth=1,
+            lowdim, = plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1), 0, linestyle='', markeredgewidth=1,
                          marker="o", markerfacecolor=orange, markeredgecolor=orange, markersize=6, zorder=100, alpha=0.4)
-            lowdim, = plt.plot(x_val, alpha * stats.norm.pdf(0, mu, sigma), linestyle='', markeredgewidth=1,
+            highdim, = plt.plot(x_val, alpha * stats.norm.pdf(0, mu, sigma), linestyle='', markeredgewidth=1,
                          marker="o", markerfacecolor=blue, markeredgecolor=blue, markersize=6, zorder=100, alpha=0.4)
 
         else:
@@ -258,11 +258,11 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha
             e, =plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1) - marker_adjustment,
                         alpha * stats.norm.pdf(x_val, mu, sigma), linestyle='',
                         marker='>', color=red, markersize=6, zorder=100)
-            highdim, = plt.plot(
+            lowdim, = plt.plot(
                 find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1), 0,
                 linestyle='', markeredgewidth=1,
                 marker="o", markerfacecolor=orange, markeredgecolor=orange, markersize=6, zorder=100, alpha=0.4)
-            lowdim, = plt.plot(x_val, alpha * stats.norm.pdf(0, mu, sigma), linestyle='', markeredgewidth=1,
+            highdim, = plt.plot(x_val, alpha * stats.norm.pdf(0, mu, sigma), linestyle='', markeredgewidth=1,
                                marker="o", markerfacecolor=blue, markeredgecolor=blue, markersize=6, zorder=100,
                                alpha=0.4)
 
@@ -290,7 +290,7 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha
 
     handles.extend([highdim, lowdim])
     labels.extend(["Neighboring observations' distances\naccording to Gaussian distribution",
-                   "Neighboring observations' distances\naccording to Student-t (df = 1) distribution"])
+                   "Neighboring observations' distances\naccording to Student-t ($\\alpha$ = 1) distribution"])
 
     handles_.extend(handles)
     labels_.extend(labels)
@@ -540,7 +540,7 @@ def plot_theta_1nn_tradeoff():
 
     y_acc = np.array([0.7802,0.7797,0.7791,0.7781,0.7743,0.7731,0.7606,0.7573,0.7447,0.7294])
 
-    y_nn = 1-y_acc
+    y_nn = np.round(1-y_acc,4)
     sns.set_style("whitegrid")
     fig, ax = plt.subplots(figsize=(16, 4))
 
@@ -549,7 +549,7 @@ def plot_theta_1nn_tradeoff():
 
     plt.plot(x, y_nn, linestyle="--", marker='o', color='black', linewidth=1.5)
 
-    for i, txt in enumerate(y_acc):
+    for i, txt in enumerate(y_nn):
         ax.annotate(txt, xy=(x[i], y_nn[i]), xytext=(x[i]-0.05, y_nn[i]+0.001), fontsize=12)
 
     plt.ylabel("1-NN error", fontsize=15)
@@ -566,40 +566,64 @@ def plot_theta_1nn_tradeoff():
     plt.show()
 
 
-def plot_initialization_comparison():
+def plot_initialization_comparison(t_sne=True):
 
     x = np.round(np.linspace(0, 1000, 21), 0)
-    with open(
-            'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\initial_embeddings\\pca\\exaggeration\\1\\fashion_mnist7000\\1\\bh_tsne_result-18-08-2019_06-25-33-metrics.json','r') as f:
-        metric_json = json.load(f)
+    if t_sne:
+        with open(
+                'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\initial_embeddings\\pca\\exaggeration\\1\\fashion_mnist7000\\1\\bh_tsne_result-18-08-2019_06-25-33-metrics.json','r') as f:
+            metric_json = json.load(f)
 
-    y_pca = np.delete(np.array(list(metric_json['cost_function_value'].values())), 1)
+        y_pca = np.delete(np.array(list(metric_json['cost_function_value'].values())), 1)
 
-    with open(
-            'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\initial_embeddings\\mds\\exaggeration\\1\\fashion_mnist7000\\1\\bh_tsne_result-18-08-2019_10-35-52-metrics.json','r') as f:
-        metric_json = json.load(f)
+        with open(
+                'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\initial_embeddings\\mds\\exaggeration\\1\\fashion_mnist7000\\1\\bh_tsne_result-18-08-2019_10-35-52-metrics.json','r') as f:
+            metric_json = json.load(f)
 
-    y_mds = np.delete(np.array(list(metric_json['cost_function_value'].values())), 1)
+        y_mds = np.delete(np.array(list(metric_json['cost_function_value'].values())), 1)
 
-    with open(
-            'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\initial_embeddings\\lle\\exaggeration\\1\\fashion_mnist7000\\1\\bh_tsne_result-18-08-2019_07-48-11-metrics.json','r') as f:
-        metric_json = json.load(f)
+        with open(
+                'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\initial_embeddings\\lle\\exaggeration\\1\\fashion_mnist7000\\1\\bh_tsne_result-18-08-2019_07-48-11-metrics.json','r') as f:
+            metric_json = json.load(f)
 
-    y_lle = np.delete(np.array(list(metric_json['cost_function_value'].values())), 1)
+        y_lle = np.delete(np.array(list(metric_json['cost_function_value'].values())), 1)
 
-    with open(
-            'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\initial_embeddings\\autoencoder\\exaggeration\\1\\fashion_mnist7000\\1\\bh_tsne_result-18-08-2019_09-10-53-metrics.json','r') as f:
-        metric_json = json.load(f)
+        with open(
+                'C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\initial_embeddings\\autoencoder\\exaggeration\\1\\fashion_mnist7000\\1\\bh_tsne_result-18-08-2019_09-10-53-metrics.json','r') as f:
+            metric_json = json.load(f)
 
-    y_auto = np.delete(np.array(list(metric_json['cost_function_value'].values())),1 )
+        y_auto = np.delete(np.array(list(metric_json['cost_function_value'].values())),1 )
+    else:
+        with open(
+                'C:\\Users\\Tobi\\git\\bhtsne\\results\\BHtSNE\\buildingblocks\\initial_embeddings\\pca\\exaggeration\\1\\fashion_mnist\\1\\bh_tsne_result-22-07-2019_11-17-43-metrics.json',
+                'r') as f:
+            metric_json = json.load(f)
+
+        y_pca = np.delete(np.array(list(metric_json['cost_function_value'].values())), 1)
+
+        with open(
+                'C:\\Users\\Tobi\\git\\bhtsne\\results\\BHtSNE\\buildingblocks\\initial_embeddings\\lle\\exaggeration\\1\\fashion_mnist\\1\\bh_tsne_result-22-07-2019_12-26-44-metrics.json',
+                'r') as f:
+            metric_json = json.load(f)
+
+        y_lle = np.delete(np.array(list(metric_json['cost_function_value'].values())), 1)
+
+        with open(
+                'C:\\Users\\Tobi\\git\\bhtsne\\results\\BHtSNE\\buildingblocks\\initial_embeddings\\autoencoder\\exaggeration\\1\\fashion_mnist\\1\\bh_tsne_result-23-07-2019_13-32-56-metrics.json',
+                'r') as f:
+            metric_json = json.load(f)
+
+        y_auto = np.delete(np.array(list(metric_json['cost_function_value'].values())), 1)
 
     sns.set_style("whitegrid")
     fig, ax = plt.subplots(figsize=(16, 4))
+    palette = sns.color_palette()
 
-    plt.plot(x, y_pca, linestyle="-", linewidth=1.5, label="PCA")
-    plt.plot(x, y_mds, linestyle="-", linewidth=1.5, label="MDS")
-    plt.plot(x, y_lle, linestyle="-", linewidth=1.5, label="LLE")
-    plt.plot(x, y_auto, linestyle="-", linewidth=1.5, label="Autoencoder")
+    plt.plot(x, y_pca, linestyle="-", linewidth=1.5, label="PCA", color=palette[0])
+    if t_sne:
+        plt.plot(x, y_mds, linestyle="-", linewidth=1.5, label="MDS", color=palette[1])
+    plt.plot(x, y_lle, linestyle="-", linewidth=1.5, label="LLE", color=palette[2])
+    plt.plot(x, y_auto, linestyle="-", linewidth=1.5, label="Autoencoder", color=palette[3])
 
     ax.tick_params(
         axis='both',  # changes apply to the x-axis
@@ -608,17 +632,24 @@ def plot_initialization_comparison():
     plt.ylabel("KL-cost", fontsize=15)
     plt.xlabel("Iteration", fontsize=15)
 
-    axins = inset_axes(ax, width="30%", height="30%", loc=10)
-    axins.plot(x, y_pca, linestyle="-", linewidth=1.5, label="PCA")
-    axins.plot(x, y_mds, linestyle="-", linewidth=1.5, label="MDS")
-    axins.plot(x, y_lle, linestyle="-", linewidth=1.5, label="LLE")
-    axins.plot(x, y_auto, linestyle="-", linewidth=1.5, label="Autoencoder")
+
+
+    axins = inset_axes(ax, width="30%", height="30%", loc=10 if t_sne else 7)
+    axins.plot(x, y_pca, linestyle="-", linewidth=1.5, label="PCA", color=palette[0])
+    if t_sne:
+        axins.plot(x, y_mds, linestyle="-", linewidth=1.5, label="MDS", color=palette[1])
+    axins.plot(x, y_lle, linestyle="-", linewidth=1.5, label="LLE", color=palette[2])
+    axins.plot(x, y_auto, linestyle="-", linewidth=1.5, label="Autoencoder", color=palette[3])
     axins.set_xlim([890, 1000.5])
-    axins.set_ylim([1.1801, 1.2099])
+    if t_sne:
+        axins.set_ylim([1.1801, 1.2099])
+    else:
+        axins.set_ylim([2.9064, 3.135])
+
     axins.xaxis.tick_top()
     axins.tick_params(axis='x', which='both', length=0)
     axins.xaxis.set_major_locator(ticker.MultipleLocator(50))
-    mark_inset(ax, axins, loc1=1, loc2=3, fc="2", ec="0.5")
+    mark_inset(ax, axins, loc1=1 if t_sne else 3, loc2=3 if t_sne else 4, fc="2", ec="0.5")
 
     # ax2 = plt.axes([0.4, 0.4, .35, .2], facecolor=None)
     # ax2.plot(x, y_pca, linestyle="-", linewidth=1.5, label="PCA")
@@ -638,21 +669,23 @@ def plot_initialization_comparison():
     # ax3.set_ylim([1.8295, 2.5649])
     # ax3.xaxis.set_major_locator(ticker.MultipleLocator(50))
 
-
+    ax.tick_params(
+        axis='both',  # changes apply to the x-axis
+        labelsize=12)
     ax.legend(fontsize=15, ncol=4, handletextpad=0.4, columnspacing=0.4, loc="upper center")
     sns.despine(left=True, right=True, bottom=True, top=True)
 
-    plt.savefig("initial_embeddings_cost", bbox_inches="tight")
+    plt.savefig("initial_embeddings_cost_{}".format("tSNE" if t_sne else "BHtSNE"), bbox_inches="tight")
 
     plt.show()
 
 
 if __name__ == '__main__':
 
-    plot_initialization_comparison()
+    #plot_initialization_comparison(t_sne=False)
     #plot_theta_1nn_tradeoff()
     #plot_theta_run_time()
-    #plot_gaussian_student_distance_shift(0, 6, 1, 1.5, 2, 2.5, alpha=4)
+    plot_gaussian_student_distance_shift(0, 6, 1, 1.5, 2, 2.5, alpha=4)
 
     #plot_perplexity_trustworthiness()
     #plot_perplexity_time()

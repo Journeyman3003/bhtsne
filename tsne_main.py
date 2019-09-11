@@ -65,6 +65,10 @@ BUILDINGBLOCK_DIR = "buildingblocks"
 
 INITIAL_EMBEDDING_DIR = os.path.join(BUILDINGBLOCK_DIR, "initial_embeddings")
 
+# Freeze index dir
+FREEZE_DIR = "freeze_index"
+FREEZE_INITIAL_DIR = os.path.join(FREEZE_DIR, "trained_embeddings")
+
 LOGGING_DIR = os.path.join(CWD, "logging")
 DAY = datetime.now().strftime("%d-%m-%Y")
 LOGGING_FILE_NAME = "bhtsne-" + DAY + ".log"
@@ -129,6 +133,18 @@ def init_directories():
 
     try:
         os.makedirs(os.path.join(RESULT_DIR, "BHtSNE", BUILDINGBLOCK_DIR))
+    except FileExistsError:
+        # directory already exists
+        pass
+
+    try:
+        os.makedirs(os.path.join(RESULT_DIR, "tSNE", FREEZE_INITIAL_DIR))
+    except FileExistsError:
+        # directory already exists
+        pass
+
+    try:
+        os.makedirs(os.path.join(RESULT_DIR, "BHtSNE", FREEZE_INITIAL_DIR))
     except FileExistsError:
         # directory already exists
         pass
@@ -211,6 +227,7 @@ def _argparse():
     argparse.add_argument('-i', '--initial_embedding', choices=["gaussian", "pca", "lle"], default="gaussian")
     argparse.add_argument('-pt', '--parametertuning', action='store_true', default=False)
     argparse.add_argument('-y', '--y_init', action='store_true', default=False)
+    argparse.add_argument('-f', '--freeze_index', type=int, default=0)
     argparse.add_argument('-r', '--run_time', action='store_true', default=False)
     argparse.add_argument('-insim', '--input_similarities', default="gaussian",
                           choices=bhtsne.BUILDING_BLOCK_DICT["input_similarities"].keys())
@@ -429,6 +446,21 @@ if __name__ == "__main__":
                                                                    method, PARAM_DICT[param][1]),
                                       initial_embedding_method=method,)
 
+        elif argp.freeze_index != 0:
+            for param in param_list:
+                if exact:
+                    """
+                    pass an additional theta=0.0 if running exact tSNE
+                    """
+                    tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
+                                  data_result_subdirectory=data_name,
+                                  result_base_dir=os.path.join(operation_dir, PARAM_DICT[param][1]),
+                                  initial_embedding_method=initial_embedding, theta=0.0)
+                else:
+                    tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
+                                  data_result_subdirectory=data_name,
+                                  result_base_dir=os.path.join(operation_dir, PARAM_DICT[param][1]),
+                                  initial_embedding_method=initial_embedding)
         ###########################################################
         #                RUN BUILDINGBLOCK ANALYSIS               #
         ###########################################################

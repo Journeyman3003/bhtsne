@@ -78,7 +78,9 @@ def make_and_fit(data, train_test_split_threshold=60000):
     model.compile(optimizer=optimizers.Adam(1e-3), loss='binary_crossentropy', metrics=['accuracy', 'mse'])
 
     print(model.summary())
-
+    print(encoder.summary())
+    print(decoder.summary())
+    quit()
     clr = ReduceLROnPlateau(
         monitor='loss',
         factor=0.5,
@@ -141,7 +143,8 @@ if __name__ == '__main__':
             data[idx] = np.subtract(np.ones((28, 28)), data[idx])
 
     # #
-    # # #model, encoder, decoder = make_and_fit(data)
+    model, encoder, decoder = make_and_fit(data)
+    quit()
     # # #
     # # #model.save("autoencoder.h5")
     # # #encoder.save("encoder.h5")

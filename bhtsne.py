@@ -109,8 +109,7 @@ DEFAULT_FREEZE_INDEX = 0
 
 def _argparse():
     argparse = ArgumentParser('bh_tsne Python wrapper')
-    argparse.add_argument('-d', '--no_dims', type=int,
-                          default=DEFAULT_NO_DIMS)
+    argparse.add_argument('-d', '--no_dims', type=int, default=DEFAULT_NO_DIMS)
     argparse.add_argument('-p', '--perplexity', type=float, default=DEFAULT_PERPLEXITY)
     argparse.add_argument('-t', '--theta', type=float, default=DEFAULT_THETA)
     argparse.add_argument('-r', '--randseed', type=int, default=EMPTY_SEED)
