@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import matplotlib.pyplot as plt
+from functools import partial
 import math
 import numpy as np
 from mnist import load_fashion_mnist_data
@@ -24,9 +25,9 @@ grey = (83 / 256, 81 / 256, 84 / 256)
 ercis = (146 / 256, 36 / 256, 40 / 256)
 
 
-def find_x_given_y(x_lim_low, x_lim_high, y_value, y_function, *y_args):
+def find_x_given_y(x_lim_low, x_lim_high, y_value, y_function):
     x = np.linspace(x_lim_low, x_lim_high, 10000)
-    y = y_function(x, *y_args)
+    y = y_function(x)
 
     rev_x = x[::-1]
     rev_y = y[::-1]
@@ -211,13 +212,47 @@ def get_intersection(f, g):
     return np.argwhere(np.diff(np.sign(f - g))).flatten()
 
 
-def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha=1):
+def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha=1, high_dim_pdf="gaussian", low_dim_pdf="student1"):
     mu = 0
     variance = 1
     sigma = math.sqrt(variance)
     x = np.linspace(x_lim_low, mu + x_lim_high * sigma, 10000)
 
-    idx = get_intersection(alpha * stats.norm.pdf(x, mu, sigma), stats.t.pdf(x, 1))[0]
+    if high_dim_pdf == "gaussian":
+        hfunc = partial(stats.norm.pdf, loc=mu, scale=sigma)
+        hlabel = "Gaussian"
+        htitle = "gaussian"
+    elif high_dim_pdf == "laplacian":
+        hfunc = partial(stats.laplace.pdf, loc=mu, scale=sigma)
+        hlabel = "Laplace"
+        htitle = "laplacian"
+    elif high_dim_pdf == "student50":
+        hfunc = partial(stats.t.pdf, df=50)
+        hlabel = "Student-t ($\\alpha=50$)"
+        htitle = "student50"
+    else:
+        hfunc = partial(stats.norm.pdf, loc=mu, scale=sigma)
+        hlabel = "Gaussian"
+        htitle = "gaussian"
+
+    if low_dim_pdf == "chi":
+        lfunc = partial(stats.chi2.pdf, df=2)
+        llabel = "Chi-squared"
+        ltitle = "chi2"
+    elif low_dim_pdf == "student05":
+        lfunc = partial(stats.t.pdf, df=0.5)
+        llabel = "Student-t ($\\alpha=0.5$)"
+        ltitle = "student05"
+    elif low_dim_pdf == "student01":
+        lfunc = partial(stats.t.pdf, df=0.1)
+        llabel = "Student-t ($\\alpha=0.1$)"
+        ltitle = "student01"
+    else:
+        lfunc = partial(stats.t.pdf, df=1)
+        llabel = "Student-t ($\\alpha=1$)"
+        ltitle = "student1"
+
+    idx = get_intersection(alpha * hfunc(x), 0.5 * lfunc(x))[0]
 
 
     y_min = -0.019945552964581167
@@ -235,34 +270,34 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha
     marker_adjustment = .03
 
     plt.figure(figsize=(10, 5))
-    plt.plot(x, alpha * stats.norm.pdf(x, mu, sigma), linestyle="-", color=blue, linewidth=1.5, label="Standard Gaussian distribution")
-    plt.plot(x, stats.t.pdf(x, 1), linestyle="-", color=orange, linewidth=1.5, label=r"Student-t ($\alpha$ = 1) distribution")
-    plt.fill_between(x_1, alpha * stats.norm.pdf(x_1, mu, sigma), stats.t.pdf(x_1, 1), alpha=0.4, color=green)
-    plt.fill_between(x_2, alpha * stats.norm.pdf(x_2, mu, sigma), stats.t.pdf(x_2, 1), alpha=0.4, color=red)
+    plt.plot(x, alpha * hfunc(x), linestyle="-", color=blue, linewidth=1.5, label="{} distribution".format(hlabel))
+    plt.plot(x, 0.5 * lfunc(x), linestyle="-", color=orange, linewidth=1.5, label="{} distribution".format(llabel))
+    plt.fill_between(x_1, alpha * hfunc(x_1), 0.5 * lfunc(x_1), alpha=0.4, color=green)
+    plt.fill_between(x_2, alpha * hfunc(x_2), 0.5 * lfunc(x_2), alpha=0.4, color=red)
     for x_val in x_values:
         d = None
         if x_val < x[idx]:
-            a, =plt.plot([x_val, find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1) + marker_adjustment],
-                     [alpha * stats.norm.pdf(x_val, mu, sigma), alpha * stats.norm.pdf(x_val, mu, sigma)], linestyle='--', color=green)
-            b, =plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1) + marker_adjustment,
-                        alpha * stats.norm.pdf(x_val, mu, sigma), linestyle='',
+            a, =plt.plot([x_val, find_x_given_y(x_lim_low, x_lim_high, alpha * hfunc(x_val), lfunc) + marker_adjustment],
+                     [alpha * hfunc(x_val), alpha * hfunc(x_val)], linestyle='--', color=green)
+            b, =plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * hfunc(x_val), lfunc) + marker_adjustment,
+                        alpha * hfunc(x_val), linestyle='',
                         marker='<', color=green, markersize=6, zorder=100)
-            lowdim, = plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1), 0, linestyle='', markeredgewidth=1,
+            lowdim, = plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * hfunc(x_val), lfunc), 0, linestyle='', markeredgewidth=1,
                          marker="o", markerfacecolor=orange, markeredgecolor=orange, markersize=6, zorder=100, alpha=0.4)
-            highdim, = plt.plot(x_val, alpha * stats.norm.pdf(0, mu, sigma), linestyle='', markeredgewidth=1,
+            highdim, = plt.plot(x_val, alpha * hfunc(0), linestyle='', markeredgewidth=1,
                          marker="o", markerfacecolor=blue, markeredgecolor=blue, markersize=6, zorder=100, alpha=0.4)
 
         else:
-            d, =plt.plot([x_val, find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1)- marker_adjustment],
-                     [alpha * stats.norm.pdf(x_val, mu, sigma), alpha * stats.norm.pdf(x_val, mu, sigma)], linestyle='--', color=red)
-            e, =plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1) - marker_adjustment,
-                        alpha * stats.norm.pdf(x_val, mu, sigma), linestyle='',
+            d, =plt.plot([x_val, find_x_given_y(x_lim_low, x_lim_high, alpha * hfunc(x_val), lfunc)- marker_adjustment],
+                     [alpha * hfunc(x_val), alpha * hfunc(x_val)], linestyle='--', color=red)
+            e, =plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * hfunc(x_val), lfunc) - marker_adjustment,
+                        alpha * hfunc(x_val), linestyle='',
                         marker='>', color=red, markersize=6, zorder=100)
             lowdim, = plt.plot(
-                find_x_given_y(x_lim_low, x_lim_high, alpha * stats.norm.pdf(x_val, mu, sigma), stats.t.pdf, 1), 0,
+                find_x_given_y(x_lim_low, x_lim_high, alpha * hfunc(x_val), lfunc), 0,
                 linestyle='', markeredgewidth=1,
                 marker="o", markerfacecolor=orange, markeredgecolor=orange, markersize=6, zorder=100, alpha=0.4)
-            highdim, = plt.plot(x_val, alpha * stats.norm.pdf(0, mu, sigma), linestyle='', markeredgewidth=1,
+            highdim, = plt.plot(x_val, alpha * hfunc(0), linestyle='', markeredgewidth=1,
                                marker="o", markerfacecolor=blue, markeredgecolor=blue, markersize=6, zorder=100,
                                alpha=0.4)
 
@@ -289,8 +324,8 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha
     handles_, labels_ = ax.get_legend_handles_labels()
 
     handles.extend([highdim, lowdim])
-    labels.extend(["Neighboring observations' distances\naccording to Gaussian distribution",
-                   "Neighboring observations' distances\naccording to Student-t ($\\alpha$ = 1) distribution"])
+    labels.extend(["Neighboring observations' distances\naccording to {} distribution".format(hlabel),
+                   "Neighboring observations' distances\naccording to {} distribution".format(llabel)])
 
     handles_.extend(handles)
     labels_.extend(labels)
@@ -309,7 +344,7 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha
     ax.tick_params(right=False, top=False, labelright=False, labeltop=True)
     plt.title("Pairwise distances $|| \mathbf{x}_i - \mathbf{x}_j ||^2$", fontsize=15)
     sns.despine(left=True, right=True, bottom=True, top=True)
-    plt.savefig("gaussian_student_distance_shift_alpha_{}".format(str(alpha)), bbox_inches="tight")
+    plt.savefig("{}_{}_distance_shift_alpha_{}".format(htitle, ltitle, str(alpha)), bbox_inches="tight")
     plt.show()
 
 
@@ -685,7 +720,7 @@ if __name__ == '__main__':
     #plot_initialization_comparison(t_sne=False)
     #plot_theta_1nn_tradeoff()
     #plot_theta_run_time()
-    plot_gaussian_student_distance_shift(0, 6, 1, 1.5, 2, 2.5, alpha=4)
+    plot_gaussian_student_distance_shift(0, 6, 1, 1.5, 2, 2.5, alpha=1, high_dim_pdf="gausian", low_dim_pdf="chi")
 
     #plot_perplexity_trustworthiness()
     #plot_perplexity_time()

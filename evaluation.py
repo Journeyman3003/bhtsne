@@ -100,8 +100,8 @@ def evaluate_bh_tsne_results(data, labels, root_dir=RESULT_DIR, data_identifier=
                                                task=task)
 
     # temporary additional filter
-    result_list = list(filter(lambda x: "exaggeration" in str(x).split(os.path.sep)
-                                  and str(1) == str(x).split(os.path.sep)[-4]
+    result_list = list(filter(lambda x: "iterations" in str(x).split(os.path.sep)
+                                  and str(1) == str(x).split(os.path.sep)[-2]
                                   #or str(500) in str(x).split(os.path.sep)
                                   #or str(1000) in str(x).split(os.path.sep)
                                   #or str(2330) in str(x).split(os.path.sep)
@@ -124,7 +124,7 @@ if __name__ == '__main__':
     #data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
     data, labels = mnist.load_fashion_mnist_data(True)
 
-    evaluate_bh_tsne_results(data, labels, data_identifier='fashion_mnist', algorithm='BHtSNE', task='initial_embeddings')
+    evaluate_bh_tsne_results(data, labels, data_identifier='fashion_mnist', algorithm='BHtSNE', task='output_similarities')
 
 
 

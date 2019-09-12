@@ -481,6 +481,13 @@ if __name__ == "__main__":
             kwargs = {x[0]: bhtsne.BUILDING_BLOCK_DICT[x[0]][x[1]] for x in building_blocks}
             if exact:
                 kwargs['theta'] = 0.0
+            if argp.cost_function == "RKL" or argp.cost_function == "JS":
+                param_list = [x for x in param_list if x != 'lying_factor']
+                if not param_list:
+                    # if param_list is now empty, quit
+                    print("Exact tsne with RKL cannot be run with theta or exaggeration parameter tuning!")
+                    quit()
+                kwargs['lying_factor'] = 1
             for param in param_list:
                 tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
                               data_result_subdirectory=data_name,

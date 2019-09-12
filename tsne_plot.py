@@ -325,7 +325,7 @@ if __name__ == "__main__":
     load_result_and_plot_single(data, labels,
                                 "C:\\Users\\Tobi\\git\\bhtsne\\results\\BHtSNE\\buildingblocks\\output_similarities\\",
                                 data_filter="fashion_mnist",
-                                mode=1, legend=None, rearrange_legend=True, max_iter_only=True)
+                                mode=2, legend=None, rearrange_legend=True, max_iter_only=True)
 
     # basepath1 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\unoptimized sptree\\1"
     # basepath2 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\optimized sptree\\1"
