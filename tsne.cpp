@@ -369,8 +369,8 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 					approximateApproxGradient(row_P, col_P, val_P, Y, N, no_dims, dY, theta, evaluateApproxErrorRKL);
 					break;
 				case 2:
-					//computeApproxGradientJS(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
-					approximateApproxGradient(row_P, col_P, val_P, Y, N, no_dims, dY, theta, evaluateApproxErrorJS);
+					computeApproxGradientJS(row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+					//approximateApproxGradient(row_P, col_P, val_P, Y, N, no_dims, dY, theta, evaluateApproxErrorJS);
 					break;
 				default:
 					switch (output_similarities) {

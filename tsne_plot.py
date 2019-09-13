@@ -242,9 +242,10 @@ def load_result_and_plot_single(_input_data, _labels, path_to_bh_tsne_result, da
 
     files = list(filter(lambda x: data_filter in str(x).split(os.path.sep)
                         and
-                        ("exaggeration" in str(x).split(os.path.sep)
-                         or
-                         "iterations" in str(x).split(os.path.sep)), files))
+                        ("perplexity" in str(x).split(os.path.sep)
+                         #or
+                         #"iterations" in str(x).split(os.path.sep)
+                         ), files))
 
 
     # for now, focus on run 1
@@ -308,8 +309,8 @@ def load_result_and_plot_single(_input_data, _labels, path_to_bh_tsne_result, da
 
 if __name__ == "__main__":
 
-    #data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
-    data, labels = mnist.load_fashion_mnist_data(True)
+    data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
+    #data, labels = mnist.load_fashion_mnist_data(True)
 
     #load_result_and_plot_comparison(_labels=labels, root_dir=os.path.join(RESULT_DIR, "tSNE", "parametertuning",
     #                                                                      "output_similarities", "studentalpha"),
@@ -323,9 +324,9 @@ if __name__ == "__main__":
     #data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
 
     load_result_and_plot_single(data, labels,
-                                "C:\\Users\\Tobi\\git\\bhtsne\\results\\BHtSNE\\buildingblocks\\output_similarities\\",
-                                data_filter="fashion_mnist",
-                                mode=2, legend=None, rearrange_legend=True, max_iter_only=True)
+                                "C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\cost_function\\RKL",
+                                data_filter="fashion_mnist7000",
+                                mode=1, legend=None, rearrange_legend=False, max_iter_only=False)
 
     # basepath1 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\unoptimized sptree\\1"
     # basepath2 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\optimized sptree\\1"
