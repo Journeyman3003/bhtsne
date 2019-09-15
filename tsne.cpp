@@ -125,8 +125,8 @@ static void symmetrizeMatrix(unsigned int** row_P, unsigned int** col_P, double*
 
 // genetic algorithm optimizer
 static void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, int N, int D, double costFunc(double*, int, double*));
-static void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double costFunc(double*, double*, int, int, double*));
-static void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta,
+static void computeExactGeneticOptimization(double* P, double* Y, int N, int iter, int D, double costFunc(double*, double*, int, int, double*));
+static void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int iter, int D, double theta,
 	double costFunc(unsigned int*, unsigned int*, double*, double*, int, int, double, double*));
 static vector<pair<double, int>> sortArr(vector<double> arr, int n);
 
@@ -2568,7 +2568,7 @@ void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, in
 	//free(fitness);
 }
 
-void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double costFunc(double*, double*, int, int, double*))
+void computeExactGeneticOptimization(double* P, double* Y, int N, int iter, int D, double costFunc(double*, double*, int, int, double*))
 {
 	// offspring will contain parents as well
 	double* offspring = (double*)malloc(2 * N * N * D * sizeof(double));
@@ -2678,6 +2678,8 @@ void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double 
 
 		// gaussian mutation 
 
+		double scale = 2.0 + iter / N * 8;
+
 		for (int i = 0; i < D * N; i++) {
 			rndNumber = rand() / (double)RAND_MAX;
 			if (rndNumber < .05) {
@@ -2685,12 +2687,12 @@ void computeExactGeneticOptimization(double* P, double* Y, int N, int D, double 
 					if (d == 0) {
 						offspring[N * D * N + o * D * N + i] =
 							//min(max(randn(offspring[N * D * N + o * D * N + i], x_range / 10), x_min), x_max);
-							randn(offspring[N * D * N + o * D * N + i], x_range / 10);
+							randn(offspring[N * D * N + o * D * N + i], x_range / scale);
 					}
 					else {
 						offspring[N * D * N + o * D * N + i] =
 							//min(max(randn(offspring[N * D * N + o * D * N + i], y_range / 10), y_min), y_max);
-							randn(offspring[N * D * N + o * D * N + i], y_range / 10);
+							randn(offspring[N * D * N + o * D * N + i], y_range / scale);
 					}
 				}
 			}

@@ -242,9 +242,9 @@ def load_result_and_plot_single(_input_data, _labels, path_to_bh_tsne_result, da
 
     files = list(filter(lambda x: data_filter in str(x).split(os.path.sep)
                         and
-                        ("perplexity" in str(x).split(os.path.sep)
+                        (#"perplexity" in str(x).split(os.path.sep)
                          #or
-                         #"iterations" in str(x).split(os.path.sep)
+                         "iterations" in str(x).split(os.path.sep)
                          ), files))
 
 
@@ -283,8 +283,8 @@ def load_result_and_plot_single(_input_data, _labels, path_to_bh_tsne_result, da
                 if mode == 0 or mode == 2:
                     fig, ax = plt.subplots(figsize=(8, 8))
                     # just a sample of 300 as images
-                    _sample_input_data, _sample_labels = mnist.sample_data(_input_data, _labels, num_samples=300)
-                    _sample_embedding_data, _ = mnist.sample_data(data, _labels, num_samples=300)
+                    _sample_input_data, _sample_labels = mnist.sample_data(_input_data, _labels, num_samples=1000)
+                    _sample_embedding_data, _ = mnist.sample_data(data, _labels, num_samples=1000)
                     color_palette = sns.color_palette("bright", n_colors=10)
                     _sample_labels = _sample_labels.astype(int)
 
@@ -324,7 +324,7 @@ if __name__ == "__main__":
     #data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
 
     load_result_and_plot_single(data, labels,
-                                "C:\\Users\\Tobi\\git\\bhtsne\\results\\tSNE\\buildingblocks\\cost_function\\RKL",
+                                "C:\\Users\\Tobi\\git\\bhtsne\\results\\BHtSNE\\buildingblocks\\cost_function\\JS",
                                 data_filter="fashion_mnist7000",
                                 mode=1, legend=None, rearrange_legend=False, max_iter_only=False)
 

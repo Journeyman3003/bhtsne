@@ -11,6 +11,7 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import matplotlib as mpl
 import matplotlib.ticker as ticker
+import matplotlib.patches as patches
 import seaborn as sns
 from matplotlib.ticker import FormatStrFormatter
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
@@ -715,12 +716,74 @@ def plot_initialization_comparison(t_sne=True):
     plt.show()
 
 
+def plot_blacklist():
+
+    sns.set_style("whitegrid")
+    fig, ax = plt.subplots(figsize=(8, 8))
+    palette = sns.color_palette()
+
+    # reference point
+    plt.plot([0.4], [0.4], c=palette[0], linestyle="", marker='o', zorder=100, label="Reference Observation")
+
+    # neighboring points
+    neighbors = [[0.51, 0.64, 0.6], [0.63, 0.6, 0.52]]
+    neighbor1, = plt.plot(neighbors[0], neighbors[1], c=palette[3], linestyle="", marker='o', zorder=100, label="Neighboring Observation")
+
+    # edge point
+    neighbor1, = plt.plot([0.55], [0.575], c=palette[2], linestyle="", marker='o', zorder=100, label="Neighboring Observation")
+
+    # Create a Rectangle patch
+    rect = patches.Rectangle((0.5, 0.5), 0.15, 0.15, linewidth=.7, edgecolor="black", facecolor='none', label="Splittree cell")
+
+    # Add the patch to the Axes
+    ax.add_patch(rect)
+
+    # connections
+    #no
+    for i in range(3):
+        x = [0.4] + [neighbors[0][i]]
+        y = [0.4] + [neighbors[1][i]]
+        plt.plot(x, y, linestyle='--', linewidth=0.7, c=palette[3], label="$p_{ij}$ not given")
+
+    #yes
+    plt.plot([0.4] + [0.55],[0.4] + [0.575], linestyle='-', linewidth=0.7, c=palette[2], label="$p_{ij}$ given")
+    handles, labels = ax.get_legend_handles_labels()
+
+    _handles = [handles[0]]
+    _labels = [labels[0]]
+
+    _handles.append((handles[1], handles[2]))
+    _labels.append(labels[1])
+
+    _handles.append(handles[3])
+    _labels.append(labels[3])
+
+    _handles.append(handles[6])
+    _labels.append(labels[6])
+
+    _handles.append(handles[7])
+    _labels.append(labels[7])
+
+    ax.legend(handles=_handles, labels=_labels, loc='lower right', fontsize=15,
+              handler_map={tuple: mpl.legend_handler.HandlerTuple(None)})
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+    #plt.legend(fontsize=15)
+    ax.set_xlim([0.35, 0.7])
+    ax.set_ylim([0.35, 0.7])
+
+    plt.savefig("blacklist_splittree", bbox_inches="tight")
+
+    plt.show()
+
+
 if __name__ == '__main__':
 
+    plot_blacklist()
     #plot_initialization_comparison(t_sne=False)
     #plot_theta_1nn_tradeoff()
     #plot_theta_run_time()
-    plot_gaussian_student_distance_shift(0, 6, 1, 1.5, 2, 2.5, alpha=1, high_dim_pdf="gausian", low_dim_pdf="chi")
+    #plot_gaussian_student_distance_shift(0, 6, 1, 1.5, 2, 2.5, alpha=1, high_dim_pdf="gausian", low_dim_pdf="chi")
 
     #plot_perplexity_trustworthiness()
     #plot_perplexity_time()

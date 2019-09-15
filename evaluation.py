@@ -121,10 +121,10 @@ def evaluate_bh_tsne_results(data, labels, root_dir=RESULT_DIR, data_identifier=
 
 if __name__ == '__main__':
 
-    #data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
-    data, labels = mnist.load_fashion_mnist_data(True)
+    data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
+    #data, labels = mnist.load_fashion_mnist_data(True)
 
-    evaluate_bh_tsne_results(data, labels, data_identifier='fashion_mnist', algorithm='BHtSNE', task='output_similarities')
+    evaluate_bh_tsne_results(data, labels, data_identifier='fashion_mnist7000', algorithm='tSNE', task='JS')
 
 
 
