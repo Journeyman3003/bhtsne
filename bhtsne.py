@@ -267,7 +267,7 @@ def run_bh_tsne(data, no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, th
                 momentum_switch_iter=DEFAULT_MOMENTUM_SWITCH_ITERATION, lying_factor=DEFAULT_EXAGGERATION_FACTOR,
                 randseed=-1, initial_solution=None, verbose=False, input_similarities=DEFAULT_BUILDING_BLOCK_INDEX,
                 output_similarities=DEFAULT_BUILDING_BLOCK_INDEX, cost_function=DEFAULT_BUILDING_BLOCK_INDEX,
-                optimization=DEFAULT_BUILDING_BLOCK_INDEX):
+                optimization=DEFAULT_BUILDING_BLOCK_INDEX, freeze_index=DEFAULT_FREEZE_INDEX):
     """
     Run TSNE based on the Barnes-HT algorithm
 
@@ -299,7 +299,7 @@ def run_bh_tsne(data, no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, th
                      stop_lying_iter=stop_lying_iter, restart_lying_iter=restart_lying_iter,
                      momentum_switch_iter=momentum_switch_iter, lying_factor=lying_factor, randseed=randseed,
                      input_similarities=input_similarities, output_similarities=output_similarities,
-                     cost_function=cost_function, optimization=optimization)
+                     cost_function=cost_function, optimization=optimization, freeze_index=freeze_index)
 
     else:
         # for linux: do all the linux stuff in child process
@@ -315,7 +315,7 @@ def run_bh_tsne(data, no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, th
                          max_iter=max_iter, stop_lying_iter=stop_lying_iter, restart_lying_iter=restart_lying_iter,
                          momentum_switch_iter=momentum_switch_iter, lying_factor=lying_factor, randseed=randseed,
                          input_similarities=input_similarities, output_similarities=output_similarities,
-                         cost_function=cost_function, optimization=optimization)
+                         cost_function=cost_function, optimization=optimization, freeze_index=freeze_index)
             os._exit(0)
         else:
             try:
@@ -351,6 +351,12 @@ def write_bh_tsne_result(bh_tsne_result_dict, directory, sep='-', *filename_exte
     filename = "bh_tsne_result-" + sep.join(filename_extensions) + '.pickle'
     # format to abspath
     file_abspath = path_join(directory, filename)
+
+    try:
+        os.makedirs(directory)
+    except FileExistsError:
+        # directory already exists
+        pass
 
     with open(file_abspath, 'wb') as pickle_file:
         pickle.dump(bh_tsne_result_dict, pickle_file)

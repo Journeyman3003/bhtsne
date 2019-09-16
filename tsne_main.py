@@ -4,6 +4,7 @@ import bhtsne
 
 from datetime import datetime
 import os
+import numpy as np
 
 # MNIST
 import mnist
@@ -447,20 +448,86 @@ if __name__ == "__main__":
                                       initial_embedding_method=method,)
 
         elif argp.freeze_index != 0:
-            for param in param_list:
-                if exact:
-                    """
-                    pass an additional theta=0.0 if running exact tSNE
-                    """
-                    tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
-                                  data_result_subdirectory=data_name,
-                                  result_base_dir=os.path.join(operation_dir, PARAM_DICT[param][1]),
-                                  initial_embedding_method=initial_embedding, theta=0.0)
-                else:
-                    tsne_workflow(parameter_name=param, value_list=PARAM_DICT[param][0], data=data,
-                                  data_result_subdirectory=data_name,
-                                  result_base_dir=os.path.join(operation_dir, PARAM_DICT[param][1]),
-                                  initial_embedding_method=initial_embedding)
+
+            #load train and test data
+            # clear previously loaded...yeah it's ugly
+            data = None
+            labels = None
+
+            if data_name == FASHION_MNIST2500:
+                (x_train, x_test), (y_train, y_test) = mnist.load_fashion_mnist_data(False, len_sample=2500,
+                                                                                     train_test_split=argp.freeze_index)
+                #initial_embedding = "fashion_mnist2000"
+            elif data_name == FASHION_MNIST7000:
+                (x_train, x_test), (y_train, y_test) = mnist.load_fashion_mnist_data(False, len_sample=7000,
+                                                                                     train_test_split=argp.freeze_index)
+                #initial_embedding = "fashion_mnist2000"
+            else:
+                (x_train, x_test), (y_train, y_test) = mnist.load_fashion_mnist_data(False, len_sample=70000,
+                                                                                     train_test_split=argp.freeze_index)
+
+            # now, embed the train data:
+            # load default initial gaussian embedding
+            #_initial_embedding = get_initial_embedding(data_name=x_train, method_name="gaussian", i=1)
+            if exact:
+                """
+                pass an additional theta=0.0 if running exact tSNE
+                """
+                # use initial embedding
+                bh_tsne_dict = bhtsne.run_bh_tsne(x_train, verbose=True, initial_solution=None, theta=0.0)
+
+                # save results
+                # timestamp
+                timestamp = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+                bhtsne.write_bh_tsne_result(bh_tsne_dict, os.path.join(RESULT_DIR, algorithm_dir, FREEZE_INITIAL_DIR),
+                                            "-", timestamp)
+            else:
+                # use initial embedding
+                bh_tsne_dict = bhtsne.run_bh_tsne(x_train, verbose=True, initial_solution=None)
+
+                # save results
+                # timestamp
+                timestamp = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+                bhtsne.write_bh_tsne_result(bh_tsne_dict, os.path.join(RESULT_DIR, algorithm_dir, FREEZE_INITIAL_DIR),
+                                            "-", timestamp)
+
+
+            # now, we embed the test data using the freeze index
+
+            #_initial_embedding = bhtsne.read_bh_tsne_result(os.path.join(RESULT_DIR, algorithm_dir, FREEZE_INITIAL_DIR,
+            #                                                             "bh_tsne_result-" + "-".join(timestamp) + '.pickle'))
+
+            _initial_embedding = bh_tsne_dict[(1000,)][:,:2]
+
+            combined_data = np.vstack((x_train, x_test))
+
+            if exact:
+                """
+                pass an additional theta=0.0 if running exact tSNE
+                """
+                # use initial embedding
+                bh_tsne_dict = bhtsne.run_bh_tsne(combined_data, verbose=True, initial_solution=_initial_embedding,
+                                                  freeze_index=argp.freeze_index, theta=0.0)
+
+                # save results
+                # timestamp
+                timestamp = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+                bhtsne.write_bh_tsne_result(bh_tsne_dict, os.path.join(RESULT_DIR, algorithm_dir, FREEZE_DIR, data_name,
+                                                                       str(argp.freeze_index)), "-", timestamp)
+            else:
+                # use initial embedding
+                bh_tsne_dict = bhtsne.run_bh_tsne(combined_data, verbose=True, initial_solution=_initial_embedding,
+                                                  freeze_index=argp.freeze_index)
+
+                # save results
+                # timestamp
+                timestamp = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+                bhtsne.write_bh_tsne_result(bh_tsne_dict, os.path.join(RESULT_DIR, algorithm_dir, FREEZE_DIR, data_name,
+                                                                       str(argp.freeze_index)), "-", timestamp)
+
+
+
+
         ###########################################################
         #                RUN BUILDINGBLOCK ANALYSIS               #
         ###########################################################

@@ -213,7 +213,7 @@ def get_intersection(f, g):
     return np.argwhere(np.diff(np.sign(f - g))).flatten()
 
 
-def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha=1, high_dim_pdf="gaussian", low_dim_pdf="student1"):
+def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, epsilon=1, high_dim_pdf="gaussian", low_dim_pdf="student1"):
     mu = 0
     variance = 1
     sigma = math.sqrt(variance)
@@ -229,7 +229,7 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha
         htitle = "laplacian"
     elif high_dim_pdf == "student50":
         hfunc = partial(stats.t.pdf, df=50)
-        hlabel = "Student-t ($\\alpha=50$)"
+        hlabel = "Student-t ($\\nu=50$)"
         htitle = "student50"
     else:
         hfunc = partial(stats.norm.pdf, loc=mu, scale=sigma)
@@ -242,18 +242,21 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha
         ltitle = "chi2"
     elif low_dim_pdf == "student05":
         lfunc = partial(stats.t.pdf, df=0.5)
-        llabel = "Student-t ($\\alpha=0.5$)"
+        llabel = "Student-t ($\\nu=0.5$)"
         ltitle = "student05"
     elif low_dim_pdf == "student01":
         lfunc = partial(stats.t.pdf, df=0.1)
-        llabel = "Student-t ($\\alpha=0.1$)"
+        llabel = "Student-t ($\\nu=0.1$)"
         ltitle = "student01"
     else:
         lfunc = partial(stats.t.pdf, df=1)
-        llabel = "Student-t ($\\alpha=1$)"
+        llabel = "Student-t ($\\nu=1$)"
         ltitle = "student1"
 
-    idx = get_intersection(alpha * hfunc(x), 0.5 * lfunc(x))[0]
+    if low_dim_pdf != "chi":
+        idx = get_intersection(epsilon * hfunc(x), lfunc(x))[0]
+    else:
+        idx = 0
 
 
     y_min = -0.019945552964581167
@@ -269,36 +272,36 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha
     sns.set(style="whitegrid")
 
     marker_adjustment = .03
-
+    d = None
+    b = None
     plt.figure(figsize=(10, 5))
-    plt.plot(x, alpha * hfunc(x), linestyle="-", color=blue, linewidth=1.5, label="{} distribution".format(hlabel))
-    plt.plot(x, 0.5 * lfunc(x), linestyle="-", color=orange, linewidth=1.5, label="{} distribution".format(llabel))
-    plt.fill_between(x_1, alpha * hfunc(x_1), 0.5 * lfunc(x_1), alpha=0.4, color=green)
-    plt.fill_between(x_2, alpha * hfunc(x_2), 0.5 * lfunc(x_2), alpha=0.4, color=red)
+    plt.plot(x, epsilon * hfunc(x), linestyle="-", color=blue, linewidth=1.5, label="{} distribution".format(hlabel))
+    plt.plot(x, lfunc(x), linestyle="-", color=orange, linewidth=1.5, label="{} distribution".format(llabel))
+    plt.fill_between(x_1, epsilon * hfunc(x_1),  lfunc(x_1), alpha=0.4, color=green)
+    plt.fill_between(x_2, epsilon * hfunc(x_2),  lfunc(x_2), alpha=0.4, color=red)
     for x_val in x_values:
-        d = None
         if x_val < x[idx]:
-            a, =plt.plot([x_val, find_x_given_y(x_lim_low, x_lim_high, alpha * hfunc(x_val), lfunc) + marker_adjustment],
-                     [alpha * hfunc(x_val), alpha * hfunc(x_val)], linestyle='--', color=green)
-            b, =plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * hfunc(x_val), lfunc) + marker_adjustment,
-                        alpha * hfunc(x_val), linestyle='',
+            a, =plt.plot([x_val, find_x_given_y(x_lim_low, x_lim_high, epsilon * hfunc(x_val), lfunc) + marker_adjustment],
+                     [epsilon * hfunc(x_val), epsilon * hfunc(x_val)], linestyle='--', color=green)
+            b, =plt.plot(find_x_given_y(x_lim_low, x_lim_high, epsilon * hfunc(x_val), lfunc) + marker_adjustment,
+                        epsilon * hfunc(x_val), linestyle='',
                         marker='<', color=green, markersize=6, zorder=100)
-            lowdim, = plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * hfunc(x_val), lfunc), 0, linestyle='', markeredgewidth=1,
+            lowdim, = plt.plot(find_x_given_y(x_lim_low, x_lim_high, epsilon * hfunc(x_val), lfunc), 0, linestyle='', markeredgewidth=1,
                          marker="o", markerfacecolor=orange, markeredgecolor=orange, markersize=6, zorder=100, alpha=0.4)
-            highdim, = plt.plot(x_val, alpha * hfunc(0), linestyle='', markeredgewidth=1,
+            highdim, = plt.plot(x_val, epsilon * hfunc(0), linestyle='', markeredgewidth=1,
                          marker="o", markerfacecolor=blue, markeredgecolor=blue, markersize=6, zorder=100, alpha=0.4)
 
         else:
-            d, =plt.plot([x_val, find_x_given_y(x_lim_low, x_lim_high, alpha * hfunc(x_val), lfunc)- marker_adjustment],
-                     [alpha * hfunc(x_val), alpha * hfunc(x_val)], linestyle='--', color=red)
-            e, =plt.plot(find_x_given_y(x_lim_low, x_lim_high, alpha * hfunc(x_val), lfunc) - marker_adjustment,
-                        alpha * hfunc(x_val), linestyle='',
+            d, =plt.plot([x_val, find_x_given_y(x_lim_low, x_lim_high, epsilon * hfunc(x_val), lfunc)- marker_adjustment],
+                     [epsilon * hfunc(x_val), epsilon * hfunc(x_val)], linestyle='--', color=red)
+            e, =plt.plot(find_x_given_y(x_lim_low, x_lim_high, epsilon * hfunc(x_val), lfunc) - marker_adjustment,
+                        epsilon * hfunc(x_val), linestyle='',
                         marker='>', color=red, markersize=6, zorder=100)
             lowdim, = plt.plot(
-                find_x_given_y(x_lim_low, x_lim_high, alpha * hfunc(x_val), lfunc), 0,
+                find_x_given_y(x_lim_low, x_lim_high, epsilon * hfunc(x_val), lfunc), 0,
                 linestyle='', markeredgewidth=1,
                 marker="o", markerfacecolor=orange, markeredgecolor=orange, markersize=6, zorder=100, alpha=0.4)
-            highdim, = plt.plot(x_val, alpha * hfunc(0), linestyle='', markeredgewidth=1,
+            highdim, = plt.plot(x_val, epsilon * hfunc(0), linestyle='', markeredgewidth=1,
                                marker="o", markerfacecolor=blue, markeredgecolor=blue, markersize=6, zorder=100,
                                alpha=0.4)
 
@@ -317,8 +320,11 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha
     for label in ax.yaxis.get_ticklabels()[::2]:
         label.set_visible(False)
 
-    handles = [(b,a,a)]
-    labels = ["Attractive force"]
+    handles = []
+    labels = []
+    if b is not None:
+        handles.append((b,a,a))
+        labels.append(["Attractive force"])
     if d is not None:
         handles.append((d,d,e))
         labels.append("Repulsive force")
@@ -345,14 +351,14 @@ def plot_gaussian_student_distance_shift(x_lim_low, x_lim_high, *x_values, alpha
     ax.tick_params(right=False, top=False, labelright=False, labeltop=True)
     plt.title("Pairwise distances $|| \mathbf{x}_i - \mathbf{x}_j ||^2$", fontsize=15)
     sns.despine(left=True, right=True, bottom=True, top=True)
-    plt.savefig("{}_{}_distance_shift_alpha_{}".format(htitle, ltitle, str(alpha)), bbox_inches="tight")
+    plt.savefig("{}_{}_distance_shift_epsilon_{}".format(htitle, ltitle, str(epsilon)), bbox_inches="tight")
     plt.show()
 
 
 def plot_fashion_mnist():
 
     fashion_labeldict = {
-        0: 'T-shirt/top',
+        0: 'T-shirttop',
         1: 'Trouser',
         2: 'Pullover',
         3: 'Dress',
@@ -364,18 +370,37 @@ def plot_fashion_mnist():
         9: 'Ankle boot'
     }
 
-    data, labels = load_fashion_mnist_data(False, len_sample=400)
-    n = 20
-    fig, axes = plt.subplots(2, n, figsize=(2 * n, 5))
+    data, labels = load_fashion_mnist_data(False, len_sample=200)
+    images_per_row = 10
+    rows = 2
+    size = 28
+
     for label in fashion_labeldict.keys():
-        for i in range(n):
-            axes[0, i].imshow(data[i].reshape(28, 28), cmap='gray')
-            axes[1, i].imshow(data[n + i].reshape(28, 28), cmap='gray')
-        for ax in axes.flatten():
-            ax.get_xaxis().set_visible(False)
-            ax.get_yaxis().set_visible(False)
-        plt.savefig("fashion_test", bbox_inches="tight")
+        display_grid = np.zeros((size * rows, images_per_row * size))
+        for i in range(rows):
+            for j in range(images_per_row):
+                display_grid[i * size: (i + 1) * size, j * size: (j + 1) * size] = data[label * 20 + i * images_per_row + j].reshape(28, 28)
+        scale = 1. / size
+        fix, ax = plt.subplots(figsize=(scale * display_grid.shape[1],
+                            scale * display_grid.shape[0]))
+        plt.grid(False)
+        plt.axis("off")
+        plt.imshow(display_grid, aspect='auto', cmap='gray')
+        plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+        plt.savefig("Fashion_MNIST_{}".format(str(label)))
         plt.show()
+
+
+    # fig, ax = plt.subplots(2, n, figsize=(2 * n, 5))
+    # for label in fashion_labeldict.keys():
+    #     for i in range(n):
+    #         axes[0, i].imshow(data[i].reshape(28, 28), cmap='gray')
+    #         axes[1, i].imshow(data[n + i].reshape(28, 28), cmap='gray')
+    #     for ax in axes.flatten():
+    #         ax.get_xaxis().set_visible(False)
+    #         ax.get_yaxis().set_visible(False)
+    #     #plt.savefig("fashion_test", bbox_inches="tight")
+    #     plt.show()
 
 
 def metric_plot(*metric_json_list, stoplying_iter=[], restartlying_iter=[], legend_labels=[], plot_title="metric_dict"):
@@ -569,6 +594,7 @@ def plot_theta_run_time():
 
     plt.savefig("theta_numsample_time", bbox_inches="tight")
     plt.show()
+
 
 def plot_theta_1nn_tradeoff():
 
@@ -777,13 +803,89 @@ def plot_blacklist():
     plt.show()
 
 
-if __name__ == '__main__':
+def plot_genetic_run_time():
+    sns.set_style("whitegrid")
+    fig, ax = plt.subplots(figsize=(16, 4))
+    palette = sns.color_palette()
 
-    plot_blacklist()
+    num_samples = [100, 200, 500, 1000]
+    num_samples_log2 = np.round(np.log2(num_samples),2)
+
+    run_time = [30.19, 258.16, 6222.83, 78024.82, ]
+    run_time_log10 = np.round(np.log10(run_time), 2)
+
+    num_samples_not_tested = [2000, 5000, 10000, 20000, 50000, 100000]
+    num_samples_not_tested_log2 = np.round(np.log2(num_samples_not_tested),2)
+    func_vals_interp = np.interp(num_samples_not_tested_log2, num_samples_log2, run_time_log10)
+
+    a = (run_time_log10[3]-run_time_log10[2])/(num_samples_log2[3]-num_samples_log2[2])
+    b = run_time_log10[3] - a * num_samples_log2[3]
+
+    f = lambda x: a * x + b
+    run_time_not_tested_log10 = np.round(f(num_samples_not_tested_log2),2)
+
+    plt.plot(num_samples_log2, run_time_log10, marker='o', color="black", label="Actual time", zorder=100)
+
+    for i, txt in enumerate(run_time_log10):
+        ax.annotate(txt, xy=(num_samples_log2[i], run_time_log10[i]), horizontalalignment="right",
+                    xytext=(num_samples_log2[i], run_time_log10[i]+0.25),
+                    fontsize=12)
+
+    for i, txt in enumerate(num_samples):
+        ax.annotate(txt, xy=(num_samples_log2[i], run_time_log10[i]), rotation=270,
+                    xytext=(num_samples_log2[i]-0.1, run_time_log10[i]-0.25), verticalalignment='top',
+                    fontsize=12)
+
+    #connection
+    plt.plot([num_samples_log2[3]] + [num_samples_not_tested_log2[0]], [run_time_log10[3]]+[run_time_not_tested_log10[0]],
+             linestyle='--', color=palette[1])
+
+    plt.plot(num_samples_not_tested_log2, run_time_not_tested_log10, marker='p', markersize=8, linestyle='--', color=palette[1],
+             label="Estimated time"
+             )
+
+    for i, txt in enumerate(run_time_not_tested_log10):
+        ax.annotate(txt, xy=(num_samples_not_tested_log2[i], run_time_not_tested_log10[i]), horizontalalignment="right",
+                    xytext=(num_samples_not_tested_log2[i], run_time_not_tested_log10[i] + 0.25), color=palette[1],
+                    fontsize=12)
+
+    for i, txt in enumerate(num_samples_not_tested):
+        ax.annotate(txt, xy=(num_samples_not_tested_log2[i], run_time_not_tested_log10[i]), rotation=270,
+                    xytext=(num_samples_not_tested_log2[i]-0.1, run_time_not_tested_log10[i]-0.25), verticalalignment='top',
+                    color=palette[1], fontsize=12)
+
+    # one day threshold
+    log10_one_day_seconds = np.log10(60 * 60 * 24)
+    ax.axhline(log10_one_day_seconds, linestyle='--', linewidth=1, zorder=-1)
+    ax.annotate("One day threshold", xy=(6.05, log10_one_day_seconds+0.1), color=palette[0] ,fontsize=12)
+
+    # one year threshold
+    log10_one_year_seconds = np.log10(60 * 60 * 24 * 365)
+    ax.axhline(log10_one_year_seconds, linestyle='--', linewidth=1, zorder=-1)
+    ax.annotate("One year threshold", xy=(6.05, log10_one_year_seconds+0.1), color=palette[0], fontsize=12)
+
+    ax.tick_params(
+        axis='both',  # changes apply to the x-axis
+        labelsize=12)
+
+    plt.xlabel("$\log_2$ Number of observations", fontsize=15)
+    plt.ylabel("$\log_{10}$ Time in seconds", fontsize=15)
+
+    plt.legend(fontsize=15, loc="upper left")
+    ax.set_xlim([6, 17])
+    ax.set_ylim([0, 14])
+
+    plt.savefig("genetic_runtime", bbox_inches="tight")
+    plt.show()
+
+
+if __name__ == '__main__':
+    #plot_genetic_run_time()
+    #plot_blacklist()
     #plot_initialization_comparison(t_sne=False)
     #plot_theta_1nn_tradeoff()
     #plot_theta_run_time()
-    #plot_gaussian_student_distance_shift(0, 6, 1, 1.5, 2, 2.5, alpha=1, high_dim_pdf="gausian", low_dim_pdf="chi")
+    plot_gaussian_student_distance_shift(0, 6, 1, 1.5, 2, 2.5, epsilon=1, high_dim_pdf="gaussian", low_dim_pdf="chi")
 
     #plot_perplexity_trustworthiness()
     #plot_perplexity_time()

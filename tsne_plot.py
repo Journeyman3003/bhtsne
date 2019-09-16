@@ -53,7 +53,8 @@ def get_bh_tsne_grouped_result_generator(root_dir=RESULT_DIR, data_identifier='m
         yield _key, list(_grouper)
 
 
-def plot_bh_tsne_result(_data, _labels, _legend="full", rearrange_legend=False, _palette="bright", _ax=None, axes_off=True):
+def plot_bh_tsne_result(_data, _labels, _legend="full", rearrange_legend=False, _palette="bright", _ax=None,
+                        axes_off=True, alpha=1.0, markers="o"):
     #plt.box(False)
     sns.despine()
     sns.set_style("white")
@@ -64,8 +65,11 @@ def plot_bh_tsne_result(_data, _labels, _legend="full", rearrange_legend=False, 
     _g = sns.scatterplot(x=_data[:, 0],
                          y=_data[:, 1],
                          hue=_labels,
+                         style=np.zeros(len(_data[:, 0])),
+                         alpha=alpha,
                          legend=_legend,
                          palette=color_dict,
+                         markers=[markers],
                          ax=_ax)
 
     if _legend is not None:
@@ -241,15 +245,16 @@ def load_result_and_plot_single(_input_data, _labels, path_to_bh_tsne_result, da
     files = glob.glob(os.path.join(path_to_bh_tsne_result, "**/*.pickle"), recursive=True)
 
     files = list(filter(lambda x: data_filter in str(x).split(os.path.sep)
-                        and
-                        (#"perplexity" in str(x).split(os.path.sep)
+                        #and
+                        #(#"perplexity" in str(x).split(os.path.sep)
                          #or
-                         "iterations" in str(x).split(os.path.sep)
-                         ), files))
+                         #"iterations" in str(x).split(os.path.sep)
+                         #)
+                         , files))
 
 
     # for now, focus on run 1
-    files = list(filter(lambda x: str(1) == str(x).split(os.path.sep)[-2], files))
+    #files = list(filter(lambda x: str(1) == str(x).split(os.path.sep)[-2], files))
 
     # for fashion_mnist= adjust labels
     fashion_labels = [FASHION_LABELDICT[l] for l in _labels]
@@ -304,12 +309,64 @@ def load_result_and_plot_single(_input_data, _labels, path_to_bh_tsne_result, da
                     plt.close()
 
 
+def load_result_and_plot_single_freeze(x_train, x_test, y_train, y_test, path_to_bh_tsne_result, data_filter="fashion_mnist7000",
+                                       legend=None, rearrange_legend=False, max_iter_only=False):
+
+    # assuming only a single result file
+    files = glob.glob(os.path.join(path_to_bh_tsne_result, "**/*.pickle"), recursive=True)
+
+    files = list(filter(lambda x: data_filter in str(x).split(os.path.sep), files))
+
+
+    # for now, focus on run 1
+    #files = list(filter(lambda x: str(1) == str(x).split(os.path.sep)[-2], files))
+
+    # for fashion_mnist= adjust labels
+    _y_train = [FASHION_LABELDICT[l] for l in y_train]
+    _y_test = [FASHION_LABELDICT[l] for l in y_test]
+
+    for file in files:
+        embedding_dict = bhtsne.read_bh_tsne_result(file)
+        for key in embedding_dict.keys():
+            if not max_iter_only or key[0] == 1000 or key[0] == 0:
+                x_embedded_train = embedding_dict[key][:len(x_train),:2]
+                x_embedded_test = embedding_dict[key][len(x_train):,:2]
+
+                dirname = os.path.dirname(file)
+                dirname = dirname.replace("results", "plots\\single")
+                try:
+                    os.makedirs(dirname)
+                except FileExistsError:
+                    # directory already exists
+                    pass
+
+
+                fig, ax = plt.subplots(figsize=(8, 8))
+
+                plot_bh_tsne_result(_data=x_embedded_train, _labels=_y_train, _legend="full" if key[0] == 10 else legend,
+                                    rearrange_legend=rearrange_legend, _palette="bright", _ax=ax, axes_off=True, alpha=0.15)
+
+                plot_bh_tsne_result(_data=x_embedded_test, _labels=_y_test,
+                                    _legend="full" if key[0] == 10 else legend,
+                                    rearrange_legend=rearrange_legend, _palette="bright", _ax=ax, axes_off=True,
+                                    alpha=1, markers="P")
+
+
+                filename = os.path.splitext(file)[0] + "-iteration{}".format(str(key[0]))
+                filename = filename.replace("results", "plots\\single")
+
+                plt.savefig(filename, bbox_inches="tight")
+
+                plt.close()
+
+
+
 
 
 
 if __name__ == "__main__":
 
-    data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
+    #data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
     #data, labels = mnist.load_fashion_mnist_data(True)
 
     #load_result_and_plot_comparison(_labels=labels, root_dir=os.path.join(RESULT_DIR, "tSNE", "parametertuning",
@@ -323,10 +380,22 @@ if __name__ == "__main__":
 
     #data, labels = mnist.load_fashion_mnist_data(False, len_sample=7000)
 
-    load_result_and_plot_single(data, labels,
-                                "C:\\Users\\Tobi\\git\\bhtsne\\results\\BHtSNE\\buildingblocks\\cost_function\\JS",
-                                data_filter="fashion_mnist7000",
-                                mode=1, legend=None, rearrange_legend=False, max_iter_only=False)
+    #load_result_and_plot_single(data, labels,
+    #                            "C:\\Users\\Tobi\\git\\bhtsne\\results\\BHtSNE\\buildingblocks\\cost_function\\JS",
+    #                            data_filter="fashion_mnist7000",
+    #                            mode=1, legend=None, rearrange_legend=False, max_iter_only=False)
+
+    # freeze index
+
+    (x_train, x_test), (y_train, y_test) = mnist.load_fashion_mnist_data(False, len_sample=2500, train_test_split=2000)
+
+    #data = np.vstack((x_train, x_train))
+    #labels = np.concatenate((y_train, y_test))
+
+    load_result_and_plot_single_freeze(x_train, x_test, y_train, y_test,
+                                       "C:\\Users\\Tobi\\git\\bhtsne\\results\\BHtSNE\\freeze_index",
+                                       data_filter="fashion_mnist2500",
+                                       legend=None, rearrange_legend=False, max_iter_only=True)
 
     # basepath1 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\unoptimized sptree\\1"
     # basepath2 = "C:\\Users\\Tobi\\Documents\\SS_19\\Master Thesis\\04 - Experiment Results\\MNIST\\base\\optimized sptree\\1"

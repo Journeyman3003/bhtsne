@@ -124,7 +124,7 @@ static void updateEuclideanDistance(double* X, int N, int update_index, int D, d
 static void symmetrizeMatrix(unsigned int** row_P, unsigned int** col_P, double** val_P, int N);
 
 // genetic algorithm optimizer
-static void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, int N, int D, double costFunc(double*, int, double*));
+//static void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, int N, int D, double costFunc(double*, int, double*));
 static void computeExactGeneticOptimization(double* P, double* Y, int N, int iter, int D, double costFunc(double*, double*, int, int, double*));
 static void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int iter, int D, double theta,
 	double costFunc(unsigned int*, unsigned int*, double*, double*, int, int, double, double*));
@@ -401,10 +401,10 @@ void TSNE::run(double* X, int N, int D, double* Y, double* costs, int* landmarks
 		}
 		else {
 			if (exact) {
-				computeExactGeneticOptimization(P, Y, N, no_dims, evaluateExactErrorKL);
+				computeExactGeneticOptimization(P, Y, N, iter, no_dims, evaluateExactErrorKL);
 			}
 			else {
-				computeApproxGeneticOptimization(row_P, col_P, val_P, Y, N, no_dims, theta, evaluateApproxErrorKL);
+				computeApproxGeneticOptimization(row_P, col_P, val_P, Y, N, iter, no_dims, theta, evaluateApproxErrorKL);
 			}
 		}
 
@@ -2360,7 +2360,7 @@ static void symmetrizeMatrix(unsigned int** _row_P, unsigned int** _col_P, doubl
     free(offset); offset = NULL;
     free(row_counts); row_counts  = NULL;
 }
-
+/*
 void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, int N, int D, double costFunc(double*, int, double*))
 {
 	unsigned int pop_size = 10;
@@ -2567,7 +2567,7 @@ void computeExactGeneticOptimization(double* P, double* Y, double* Y_genomes, in
 	free(offspring);
 	//free(fitness);
 }
-
+*/
 void computeExactGeneticOptimization(double* P, double* Y, int N, int iter, int D, double costFunc(double*, double*, int, int, double*))
 {
 	// offspring will contain parents as well
@@ -2728,8 +2728,9 @@ void computeExactGeneticOptimization(double* P, double* Y, int N, int iter, int 
 	free(offspring); offspring = NULL;
 }
 
+
 //static double evaluateApproxErrorKL(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta, double* costs);
-void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta,
+void computeApproxGeneticOptimization(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int iter, int D, double theta,
 	double costFunc(unsigned int*, unsigned int*, double*, double*, int, int, double, double*))
 {
 	// offspring will contain parents as well
@@ -3113,7 +3114,12 @@ bool TSNE::load_data(double** data, int* n, int* d, double** initial_solution, i
 		// if there is an initial solution provided, set skip random init to true
 		printf("Initial solution Y is provided!\n");
 		*skip_random_init = true;		
-	}																		
+	}		
+
+	if (*freeze_index != 0) {
+		printf("Initial solution Y is provided for train dataset!\n");
+		*skip_random_init = true;
+	}
 	
 	fclose(h);
 	printf("Read the %i x %i data matrix successfully!\n", *n, *d);

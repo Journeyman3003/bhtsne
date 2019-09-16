@@ -64,7 +64,7 @@ def load_mnist_data(all_data=True, dir_name=DEFAULT_DIR):
         return mnist, label
 
 
-def load_fashion_mnist_data(all_data=True, train_test_split=False, len_sample=2500, dir_name=DEFAULT_DIR):
+def load_fashion_mnist_data(all_data=True, train_test_split=0, len_sample=2500, dir_name=DEFAULT_DIR):
     # init empty numpy arrays
 
     fashion_mnist_images = np.empty((0, 784))
@@ -100,13 +100,25 @@ def load_fashion_mnist_data(all_data=True, train_test_split=False, len_sample=25
         fashion_mnist_labels = np.hstack((fashion_mnist_labels, labels))
 
     if all_data:
-        if train_test_split:
+        if train_test_split > 0:
             return (fashion_mnist_images[:60000], fashion_mnist_images[60000:]),\
                    (fashion_mnist_labels[:60000], fashion_mnist_labels[60000:])
         else:
             return fashion_mnist_images, fashion_mnist_labels
     else:
-        return sample_data(fashion_mnist_images, fashion_mnist_labels, len_sample)
+        if train_test_split > 0:
+            sample_images, sample_labels = sample_data(fashion_mnist_images, fashion_mnist_labels, len_sample)
+            train_index = np.array(range(int(train_test_split/10)))
+            test_index = np.array(range(int(train_test_split/10), int(len_sample/10)))
+            train_index_all = []
+            test_index_all = []
+            for i in range(10):
+                train_index_all.extend(train_index + i * int(len_sample/10))
+                test_index_all.extend(test_index + i * int(len_sample/10))
+            return (sample_images[train_index_all], sample_images[test_index_all]),\
+                   (sample_labels[train_index_all], sample_labels[test_index_all])
+        else:
+            return sample_data(fashion_mnist_images, fashion_mnist_labels, len_sample)
 
 
 def mnist_1d_to_2d(data, num_observations=70000, img_rows=28, img_cols=28):
@@ -119,8 +131,9 @@ def mnist_2d_to_1d(data, num_observations=70000, img_rows=28, img_cols=28):
 
 if __name__ == '__main__':
     #x, label = load_mnist_data(True)
-    fashion_x, fashion_label = load_fashion_mnist_data(all_data=True, train_test_split=True)
-
+    fashion_x, fashion_label = load_fashion_mnist_data(all_data=False, len_sample=2500, train_test_split=2000)
+    arr, counts = np.unique(fashion_label[1], return_counts=True)
+    print(counts)
 
 
 
