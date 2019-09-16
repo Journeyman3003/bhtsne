@@ -497,7 +497,7 @@ if __name__ == "__main__":
             #_initial_embedding = bhtsne.read_bh_tsne_result(os.path.join(RESULT_DIR, algorithm_dir, FREEZE_INITIAL_DIR,
             #                                                             "bh_tsne_result-" + "-".join(timestamp) + '.pickle'))
 
-            _initial_embedding = bh_tsne_dict[(1000,)][:,:2]
+            _initial_embedding = bh_tsne_dict[(1000,)][:, :2]
 
             combined_data = np.vstack((x_train, x_test))
 

@@ -54,7 +54,7 @@ def get_bh_tsne_grouped_result_generator(root_dir=RESULT_DIR, data_identifier='m
 
 
 def plot_bh_tsne_result(_data, _labels, _legend="full", rearrange_legend=False, _palette="bright", _ax=None,
-                        axes_off=True, alpha=1.0, markers="o"):
+                        axes_off=True, alpha=1.0, markers="o", zorder=1, linewidth=0.5):
     #plt.box(False)
     sns.despine()
     sns.set_style("white")
@@ -70,6 +70,8 @@ def plot_bh_tsne_result(_data, _labels, _legend="full", rearrange_legend=False, 
                          legend=_legend,
                          palette=color_dict,
                          markers=[markers],
+                         zorder=zorder,
+                         linewidth=linewidth,
                          ax=_ax)
 
     if _legend is not None:
@@ -349,7 +351,7 @@ def load_result_and_plot_single_freeze(x_train, x_test, y_train, y_test, path_to
                 plot_bh_tsne_result(_data=x_embedded_test, _labels=_y_test,
                                     _legend="full" if key[0] == 10 else legend,
                                     rearrange_legend=rearrange_legend, _palette="bright", _ax=ax, axes_off=True,
-                                    alpha=1, markers="P")
+                                    alpha=1, markers="P", zorder=20, linewidth=0.5)
 
 
                 filename = os.path.splitext(file)[0] + "-iteration{}".format(str(key[0]))
